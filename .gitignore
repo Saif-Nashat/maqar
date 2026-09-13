@@ -1,0 +1,11 @@
+node_modules/
+dist/
+build/
+.env
+.env.local
+.env.*.local
+SupaBase Password.txt
+.claude/settings.local.json
+.DS_Store
+Thumbs.db
+*.log
