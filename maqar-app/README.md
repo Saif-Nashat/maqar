@@ -1,16 +1,60 @@
-# React + Vite
+# Maqar
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A room-booking platform for Jordan. People browse verified meeting, private, and event rooms on a
+map of Amman, book them with a 50% CliQ deposit, and receive a 4-digit arrival code. There are two
+account types: **guests** who book rooms, and **hosts** who list and manage them.
 
-Currently, two official plugins are available:
+Bilingual (English / Arabic with full RTL), light and dark themes, installable as a PWA.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Stack
 
-## React Compiler
+React 19 + Vite · Tailwind CSS v3 · react-router-dom v7 · Leaflet + react-leaflet (CARTO tiles) ·
+lucide-react · Supabase (Postgres, Auth, Storage, Realtime).
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Running it
 
-## Expanding the ESLint configuration
+```bash
+npm install
+npm run dev
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+The dev server runs on <http://localhost:5173>.
+
+| Script | Does |
+|---|---|
+| `npm run dev` | Vite dev server with HMR |
+| `npm run build` | Production build to `dist/` |
+| `npm run preview` | Serve the built `dist/` locally |
+| `npm run lint` | ESLint over `**/*.{js,jsx}` |
+
+## Demo mode vs live mode
+
+The app runs in one of two modes and picks automatically, so it never breaks:
+
+- **Demo mode** — no Supabase env vars present. All data lives in `localStorage` seeded from
+  `src/data/`. Everything is clickable with no backend at all.
+- **Live mode** — both `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set. Real auth, real
+  Postgres, real Storage, realtime chat.
+
+The switch is `isSupabaseConfigured` in `src/lib/supabase.js`. To go live, copy `.env.example` to
+`.env.local` and fill in your project values — see [SETUP.md](./SETUP.md) for the full walkthrough
+(creating the Supabase project, running `supabase/schema.sql`, the storage bucket, and deploying).
+
+## Layout
+
+```
+src/
+  screens/     route-level pages (Home, Detail, Booking, dashboards, Messages, Login)
+  components/  reusable UI (Nav, RoomCard, MapView, Filters, Modal, Toast, …)
+  store/       React Context providers — AppContext (data + actions), SettingsContext (theme/lang)
+  services/    db.js — all Supabase reads and writes, live mode only
+  lib/         small helpers — supabase client, route guards, geo math, ratings, icons, PWA
+  data/        seed rooms and demo fixtures
+  i18n/        EN/AR dictionaries and the useT() hook
+supabase/
+  schema.sql   tables, row-level security, signup trigger, seed rooms
+public/        PWA manifest, service worker, icons
+```
+
+More detail on architecture and the current roadmap lives in [SESSION_LOG.md](./SESSION_LOG.md),
+and repo-wide conventions are in [`../CLAUDE.md`](../CLAUDE.md).
