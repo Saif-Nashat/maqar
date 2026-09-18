@@ -9,7 +9,8 @@ export default function Login() {
   const { signUp, signIn, toast, pendingAction } = useApp();
   const { t } = useT();
   const [signup, setSignup] = useState(false);
-  const [method, setMethod] = useState("phone");
+  // email, not phone: phone sign-in is not implemented yet, so it must not be the default.
+  const [method, setMethod] = useState("email");
   const [acctType, setAcctType] = useState("user");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("demo@maqar.app");
@@ -53,12 +54,17 @@ export default function Login() {
         {signup && <Field label={t("login.fullName")}><input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Sara Odeh" className="field-input" /></Field>}
 
         <div className="mb-[14px] mt-4">
-          <Tabs options={[["phone", t("login.phoneTab")], ["email", t("login.emailTab")]]} value={method} onChange={setMethod} />
+          <Tabs
+            options={[
+              ["phone", t("login.phoneTab"), { disabled: true, note: t("login.soon") }],
+              ["email", t("login.emailTab")],
+            ]}
+            value={method} onChange={setMethod} />
         </div>
 
-        {method === "phone"
-          ? <Field label={t("login.phone")}><input type="tel" defaultValue="07 9 123 4567" className="field-input" dir="ltr" /></Field>
-          : null}
+        {/* The phone field is gone with the disabled tab. It was uncontrolled and never
+            submitted — signIn() has always sent email + password. It comes back when
+            phone OTP is actually wired up (Supabase Phone provider + an SMS provider). */}
         <Field label={t("login.email")}><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="field-input" dir="ltr" /></Field>
 
         <Field label={t("login.password")}><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="field-input" dir="ltr" /></Field>
@@ -114,18 +120,29 @@ function Field({ label, children }) {
   );
 }
 
+// An option is [value, label] or [value, label, { disabled, note }]. A disabled tab still
+// shows — it advertises what is coming — but cannot be selected, so it never pretends to
+// work. Phone sign-in is disabled until phone OTP is actually wired up.
 function Tabs({ options, value, onChange, pill }) {
   return (
     <div className={pill ? "flex rounded-rs p-1 mb-5" : "flex gap-2"} style={pill ? { background: "var(--foam)" } : undefined}>
-      {options.map(([v, label]) => {
+      {options.map(([v, label, opts]) => {
         const on = value === v;
+        const disabled = !!opts?.disabled;
         return (
-          <button key={v} onClick={() => onChange(v)}
-            className={`flex-1 py-[9px] rounded-lg text-[14px] font-semibold transition-all`}
-            style={on
+          <button key={v} type="button" disabled={disabled}
+            aria-disabled={disabled || undefined}
+            onClick={() => { if (!disabled) onChange(v); }}
+            className={`flex-1 py-[9px] rounded-lg text-[14px] font-semibold transition-all inline-flex items-center justify-center gap-[6px]
+              ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
+            style={on && !disabled
               ? { background: "var(--surface)", color: "var(--espresso)", boxShadow: "var(--shadow)" }
               : { color: "var(--muted)" }}>
             {label}
+            {opts?.note && (
+              <span className="text-[10px] font-bold uppercase tracking-[.06em] px-[6px] py-[2px] rounded-full"
+                style={{ background: "var(--surface-sunken)", color: "var(--muted)" }}>{opts.note}</span>
+            )}
           </button>
         );
       })}

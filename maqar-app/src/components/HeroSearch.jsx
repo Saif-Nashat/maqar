@@ -80,7 +80,11 @@ export default function HeroSearch({ onSearch }) {
       </div>
 
       {/* filters row */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-[8px]">
+      {/* lg, not sm: three icon+label+value segments plus the search button need roughly
+          1024px to sit on one line. At the old `sm` (640px) they were crammed together and
+          the selects rendered truncated ("Any roor", "Any si:"). Below lg they stack full
+          width instead, which reads fine and never clips. */}
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-[8px]">
         <Segment icon={<LayoutGrid className="w-[18px] h-[18px]" />} label={t("search.type")}>
           <select value={filters.type} onChange={(e) => setFilters((f) => ({ ...f, type: e.target.value }))}
             className="bg-transparent font-semibold text-[14px] outline-none cursor-pointer w-full" style={{ color: "var(--espresso)" }}>
@@ -100,7 +104,7 @@ export default function HeroSearch({ onSearch }) {
         <Divider />
 
         <Segment icon={<MapPin className="w-[18px] h-[18px]" />} label={t("search.where")}>
-          <div className="font-semibold text-[14px]" style={{ color: "var(--espresso)" }}>{t("search.amman")}</div>
+          <div className="font-semibold text-[14px] whitespace-nowrap" style={{ color: "var(--espresso)" }}>{t("search.amman")}</div>
         </Segment>
 
         <button onClick={onSearch}
@@ -114,7 +118,12 @@ export default function HeroSearch({ onSearch }) {
 
 function Segment({ icon, label, children }) {
   return (
-    <div className="flex items-center gap-[11px] px-[12px] py-[6px] flex-1 min-w-0">
+    // flex-auto, not flex-1: flex-1 is `flex: 1 1 0%`, which splits the row into equal
+    // thirds and ignores how wide each segment's content actually is — that is what
+    // clipped "Any room" to "Any roor" and wrapped "Amman & nearby" onto two lines.
+    // flex-auto (`flex: 1 1 auto`) sizes each segment from its content first, then
+    // shares out what is left. Below `lg` the row stacks, so nothing needs to shrink.
+    <div className="flex items-center gap-[11px] px-[12px] py-[6px] flex-auto">
       <span className="grid place-items-center w-[36px] h-[36px] rounded-[10px] shrink-0"
         style={{ background: "var(--foam)", color: "var(--coffee)" }}>{icon}</span>
       <div className="min-w-0 flex-1">
@@ -126,5 +135,5 @@ function Segment({ icon, label, children }) {
 }
 
 function Divider() {
-  return <span className="hidden sm:block w-px self-stretch my-[8px]" style={{ background: "var(--line)" }} />;
+  return <span className="hidden lg:block w-px self-stretch my-[8px]" style={{ background: "var(--line)" }} />;
 }

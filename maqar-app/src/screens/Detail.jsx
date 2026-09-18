@@ -47,13 +47,7 @@ export default function Detail() {
         <ChevronLeft className="w-4 h-4 rtl:rotate-180" /> {t("common.back")}
       </button>
 
-      <div className="grid grid-cols-[2fr_1fr_1fr] grid-rows-[130px_130px] gap-[10px] rounded-r overflow-hidden mb-[26px]" style={{ boxShadow: "var(--shadow)" }}>
-        {room.imgs.slice(0, 4).map((img, i) => (
-          <img key={i} src={img} alt="" onClick={() => setLightbox(i)}
-            className={`w-full h-full object-cover cursor-zoom-in hover:brightness-105 hover:saturate-[1.06] transition-all ${i === 0 ? "row-span-2" : ""}`}
-            style={{ animation: `galRise .6s cubic-bezier(.22,1,.36,1) ${0.05 + i * 0.07}s both` }} />
-        ))}
-      </div>
+      <Gallery imgs={room.imgs} title={rt.title} onOpen={setLightbox} />
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_350px] gap-[34px]">
         <div>
@@ -130,6 +124,47 @@ export default function Detail() {
       </div>
 
       {lightbox != null && <Lightbox imgs={room.imgs} index={lightbox} setIndex={setLightbox} />}
+    </div>
+  );
+}
+
+// The gallery shapes its grid around how many photos a room actually has. The previous
+// fixed 3x2 grid always left at least one cell empty — image 0 spans two rows, so six
+// cells needed five images and only four were ever passed. A three-photo room showed a
+// large blank block where photos four and five would have gone.
+const GALLERY_LAYOUTS = {
+  1: { cols: "1fr", rows: "270px", take: 1 },
+  2: { cols: "1fr 1fr", rows: "270px", take: 2 },
+  3: { cols: "2fr 1fr", rows: "130px 130px", take: 3, spanFirst: true },
+  4: { cols: "2fr 1fr 1fr", rows: "130px 130px", take: 4, spanFirst: true, spanLast: true },
+  5: { cols: "2fr 1fr 1fr", rows: "130px 130px", take: 5, spanFirst: true },
+};
+
+function Gallery({ imgs = [], title, onOpen }) {
+  if (!imgs.length) return null;
+  const layout = GALLERY_LAYOUTS[Math.min(imgs.length, 5)];
+  const shown = imgs.slice(0, layout.take);
+  const extra = imgs.length - shown.length;
+
+  return (
+    <div className="grid gap-[10px] rounded-r overflow-hidden mb-[26px]"
+      style={{ gridTemplateColumns: layout.cols, gridTemplateRows: layout.rows, boxShadow: "var(--shadow)" }}>
+      {shown.map((img, i) => {
+        const isLast = i === shown.length - 1;
+        return (
+          <button key={i} type="button" onClick={() => onOpen(i)}
+            className={`relative w-full h-full overflow-hidden cursor-zoom-in group
+              ${i === 0 && layout.spanFirst ? "row-span-2" : ""} ${isLast && layout.spanLast ? "col-span-2" : ""}`}
+            style={{ animation: `galRise .6s cubic-bezier(.22,1,.36,1) ${0.05 + i * 0.07}s both` }}>
+            <img src={img} alt={`${title} — photo ${i + 1} of ${imgs.length}`}
+              className="w-full h-full object-cover transition-all group-hover:brightness-105 group-hover:saturate-[1.06]" />
+            {isLast && extra > 0 && (
+              <span className="absolute inset-0 grid place-items-center text-[15px] font-semibold"
+                style={{ background: "rgba(43,29,23,.55)", color: "var(--cream)" }}>+{extra}</span>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }

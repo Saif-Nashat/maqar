@@ -7,9 +7,16 @@ import { useSettings } from "../store/SettingsContext.jsx";
 import { useT } from "../i18n/index.jsx";
 import { roomText, AMMAN_CENTER } from "../data/rooms.js";
 
+// CARTO now watermarks keyless basemap tiles with "API KEY REQUIRED". Supply a key
+// via VITE_CARTO_KEY and the watermark goes away; without one the map still works,
+// same demo-vs-live spirit as the Supabase gate.
+// NOTE: confirm the query-parameter name against your CARTO dashboard when you get
+// the key — this assumes `api_key`, which is their documented basemap parameter.
+const CARTO_KEY = import.meta.env.VITE_CARTO_KEY;
+const KEY_Q = CARTO_KEY ? `?api_key=${CARTO_KEY}` : "";
 const TILES = {
-  light: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-  dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+  light: `https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png${KEY_Q}`,
+  dark: `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png${KEY_Q}`,
 };
 const ATTRIB = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
 

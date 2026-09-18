@@ -31,6 +31,17 @@
   --shadow: 0 1px 1px rgba(43, 29, 23, .04), 0 4px 10px rgba(43, 29, 23, .05), 0 14px 34px rgba(43, 29, 23, .08);
   --shadow-lg: 0 2px 4px rgba(43, 29, 23, .06), 0 12px 28px rgba(43, 29, 23, .10), 0 32px 72px rgba(43, 29, 23, .16);
   --inner-light: 0 1px 0 rgba(255, 255, 255, .8) inset;
+
+  /* ---- Surface tiers ----
+     Everything in the app used to be one card: white, rounded, one shadow. Four tiers
+     give the page an actual hierarchy, so a featured room can outrank a form field.
+     sunken < bg < surface < raised. In light the tiers separate mostly by elevation;
+     in dark they separate by value, because shadows barely read on a dark ground. */
+  --surface-sunken: #F1E9DC;
+  --surface-raised: #FFFFFF;
+  --shadow-raised: 0 4px 10px rgba(43, 29, 23, .06), 0 18px 40px rgba(43, 29, 23, .10), 0 44px 90px rgba(43, 29, 23, .12);
+  /* Paper grain on the page ground. Kept very low — it should read as texture, not noise. */
+  --grain: .04;
 }
 
 /* ===== Dark "late-night café" theme ===== */
@@ -50,10 +61,20 @@
   --shadow: 0 1px 1px rgba(0, 0, 0, .3), 0 4px 12px rgba(0, 0, 0, .35), 0 16px 38px rgba(0, 0, 0, .45);
   --shadow-lg: 0 2px 6px rgba(0, 0, 0, .4), 0 14px 34px rgba(0, 0, 0, .5), 0 36px 80px rgba(0, 0, 0, .6);
   --inner-light: 0 1px 0 rgba(255, 255, 255, .06) inset;
+  --surface-sunken: #120D09;
+  --surface-raised: #261C15;
+  --shadow-raised: 0 4px 12px rgba(0, 0, 0, .45), 0 20px 46px rgba(0, 0, 0, .55), 0 48px 96px rgba(0, 0, 0, .6);
+  /* Grain is heavier in dark — a dark flat ground shows banding that texture hides. */
+  --grain: .055;
 }
 
 @layer base {
-  html { scroll-behavior: smooth; scrollbar-color: var(--crema) var(--foam); }
+  /* overflow-x lives on <html>, not <body>: the viewport's scrollbar is governed by
+     <html>, so clipping only on <body> still left a horizontal scrollbar.
+     `clip` rather than `hidden` — `hidden` makes this a scroll container and breaks
+     the sticky nav. Needed because the hero's decorative blobs bleed past the right
+     edge by design. */
+  html { scroll-behavior: smooth; scrollbar-color: var(--crema) var(--foam); overflow-x: clip; }
   body {
     font-family: 'Inter', system-ui, sans-serif;
     background: var(--bg);
@@ -62,6 +83,13 @@
     letter-spacing: .005em;
     -webkit-font-smoothing: antialiased;
     transition: background .4s var(--ease), color .4s var(--ease);
+  }
+  /* Paper grain on the page ground. z-index -1 puts it above body's background colour
+     but behind every element, so it never intercepts clicks or covers content. */
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    opacity: var(--grain);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
   }
   h1, h2, h3 { font-family: 'Fraunces', Georgia, serif; letter-spacing: -.02em; }
   img { display: block; max-width: 100%; }
@@ -80,6 +108,55 @@
 
 @layer components {
   .wrap { max-width: 1180px; margin: 0 auto; padding: 0 22px; }
+
+  /* ---- Editorial display type ----
+     Fraunces carries an `opsz` (optical size) axis. Browsers already apply it
+     automatically via font-optical-sizing:auto, tied to font-size. These classes take
+     manual control of it so display text gets the high-opsz drawing — tighter fit,
+     finer hairlines — regardless of the size it renders at. */
+  .display {
+    font-family: 'Fraunces', Georgia, serif;
+    font-optical-sizing: none;
+    font-variation-settings: 'opsz' 144;
+    font-size: clamp(34px, 5.4vw, 60px);
+    /* 1.03, not .99 — at display size a single line can sit tighter, but this headline
+       wraps to two and descenders were touching the next line's caps. */
+    line-height: 1.03;
+    letter-spacing: -.032em;
+    text-wrap: balance;
+  }
+  .display-sm {
+    font-family: 'Fraunces', Georgia, serif;
+    font-optical-sizing: none;
+    font-variation-settings: 'opsz' 144;
+    font-size: clamp(24px, 3vw, 36px);
+    line-height: 1.06;
+    letter-spacing: -.028em;
+    text-wrap: balance;
+  }
+  /* Arabic has no Fraunces equivalent; Tajawal has no optical axis. Reset cleanly. */
+  [dir="rtl"] .display, [dir="rtl"] .display-sm {
+    font-family: 'Tajawal', sans-serif; font-variation-settings: normal; letter-spacing: 0; line-height: 1.15;
+  }
+
+  /* ---- Tabular figures ----
+     Any number a reader compares or watches change: prices, capacity, ratings,
+     countdowns. Proportional digits shift width as they tick, which makes a live
+     countdown visibly jitter. */
+  .num { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1; }
+
+  /* ---- Surface tiers (see the token block for why) ---- */
+  .surface-sunken {
+    background: var(--surface-sunken);
+    border: 1px solid var(--surface-border);
+    border-radius: 14px;
+  }
+  .surface-raised {
+    background: var(--surface-raised);
+    border: 1px solid var(--surface-border);
+    border-radius: 18px;
+    box-shadow: var(--shadow-raised), var(--inner-light);
+  }
 
   /* ---- Primary buttons: animated sheen + gold edge ---- */
   .btn-primary {

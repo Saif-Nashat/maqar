@@ -64,7 +64,7 @@ export default function RoomCard({ room, onHover, active, distanceKm }) {
             <Check className="w-3 h-3" strokeWidth={3} /> {t("common.verified")}
           </div>
         )}
-        <div className="price-badge absolute bottom-[10px] right-[10px] flex items-baseline gap-[2px]">
+        <div className="price-badge num absolute bottom-[10px] right-[10px] flex items-baseline gap-[2px]">
           <span className="text-[15px] leading-none">{room.price}</span>
           <span className="text-[11px]">{lang === "ar" ? "د.أ" : "JOD"}</span>
           <small className="font-normal opacity-70 text-[11px]">{lang === "ar" ? "/ساعة" : "/hr"}</small>
@@ -81,7 +81,7 @@ export default function RoomCard({ room, onHover, active, distanceKm }) {
           <h3 className="font-sans text-[16px] font-bold leading-tight cursor-pointer group-hover:text-[var(--crema)] transition-colors" onClick={openDetail}>
             {rt.title}
           </h3>
-          <span className="flex items-center gap-[3px] text-[13px] font-bold shrink-0 mt-[1px]" style={{ color: "var(--espresso)" }}>
+          <span className="num flex items-center gap-[3px] text-[13px] font-bold shrink-0 mt-[1px]" style={{ color: "var(--espresso)" }}>
             <Star className="w-[14px] h-[14px]" style={{ fill: "var(--crema)", color: "var(--crema)" }} />
             {rating.avg}
             <span className="font-medium text-[12px]" style={{ color: "var(--muted)" }}>({rating.count})</span>

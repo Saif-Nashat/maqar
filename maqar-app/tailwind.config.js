@@ -4,21 +4,37 @@ export default {
   content: ["./index.html", "./src/**/*.{js,jsx}"],
   theme: {
     extend: {
+      // These point at the CSS custom properties rather than hard-coded hex, so a
+      // utility like `bg-foam` follows the `.dark` swap instead of staying light.
+      // Previously `bg-foam` rendered #F6F0E7 in dark mode while --foam was #241A13.
+      //
+      // Trade-off: Tailwind's slash-opacity modifiers (`bg-foam/50`) do NOT work with
+      // plain var() colours — that needs `rgb(var(--x) / <alpha-value>)` with the token
+      // holding raw channels. Nothing in the codebase uses those modifiers today; if you
+      // want one, write the rgba() inline or convert that token to channel form.
       colors: {
-        espresso: "#2B1D17",
-        coffee: "#4A342A",
-        crema: "#C9A27E",
-        latte: "#E8DCCB",
-        foam: "#F6F0E7",
-        cream: "#FBF7F0",
-        ink: "#241812",
-        muted: "#7A6A5E",
-        line: "#E5D9C9",
-        good: "#3F7A4E",
-        warn: "#C0863B",
-        bad: "#B4453A",
-        verify: "#2E6F5E",
-        gold: "#B8905F",
+        espresso: "var(--espresso)",
+        coffee: "var(--coffee)",
+        crema: "var(--crema)",
+        latte: "var(--latte)",
+        foam: "var(--foam)",
+        cream: "var(--cream)",
+        ink: "var(--ink)",
+        muted: "var(--muted)",
+        line: "var(--line)",
+        good: "var(--good)",
+        warn: "var(--warn)",
+        bad: "var(--bad)",
+        verify: "var(--verify)",
+        gold: "var(--gold)",
+        // Tokens that previously existed only as CSS variables with no utility at all.
+        bg: "var(--bg)",
+        surface: "var(--surface)",
+        "surface-sunken": "var(--surface-sunken)",
+        "surface-raised": "var(--surface-raised)",
+        "surface-border": "var(--surface-border)",
+        "fill-dark": "var(--fill-dark)",
+        "fill-mid": "var(--fill-mid)",
       },
       fontFamily: {
         serif: ["Fraunces", "Georgia", "serif"],

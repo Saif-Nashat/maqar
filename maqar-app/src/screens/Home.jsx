@@ -1,6 +1,8 @@
 import { useMemo, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Heart, LayoutGrid, Navigation } from "lucide-react";
 import { useApp } from "../store/AppContext.jsx";
+import GetStartedButton from "../components/GetStartedButton.jsx";
 import { useT } from "../i18n/index.jsx";
 import { distanceKm } from "../lib/geo.js";
 import MapView from "../components/MapView.jsx";
@@ -26,8 +28,9 @@ function useFiltered(filters, all) {
 }
 
 export default function Home() {
-  const { filters, favorites, toast, rooms: allRooms } = useApp();
+  const { filters, favorites, toast, rooms: allRooms, loggedIn } = useApp();
   const { t, lang } = useT();
+  const nav = useNavigate();
   const base = useFiltered(filters, allRooms);
   const gridRef = useRef(null);
   const resultsRef = useRef(null);
@@ -73,19 +76,32 @@ export default function Home() {
   return (
     <>
       <div className="wrap relative pt-[30px] pb-[10px]">
-        <div className="absolute -top-10 -right-16 w-[420px] h-[420px] pointer-events-none -z-0 blur-[8px]"
+        {/* right-0, not -right-16: the negative offset pushed this 64px past the viewport
+            and gave the whole page a horizontal scrollbar. It is a blurred radial gradient
+            that fades out by 65%, so moving it flush costs nothing visually. */}
+        <div className="absolute -top-10 right-0 w-[420px] h-[420px] pointer-events-none -z-0 blur-[8px]"
           style={{ background: "radial-gradient(circle,rgba(201,162,126,.22),transparent 65%)" }} />
         <div className="absolute left-0 right-0 -top-[10%] h-[380px] -z-0 pointer-events-none blur-[10px] animate-mesh"
           style={{ background: "radial-gradient(40% 50% at 15% 30%,rgba(201,162,126,.18),transparent 70%),radial-gradient(35% 45% at 80% 20%,rgba(74,52,42,.10),transparent 70%),radial-gradient(45% 55% at 60% 70%,rgba(232,220,203,.35),transparent 70%)" }} />
 
         <div className="relative z-[1] flex items-end justify-between gap-5 flex-wrap mb-[18px]">
-          <h1 className="text-[clamp(28px,4.5vw,46px)] font-semibold leading-[1.04] tracking-[-1px] max-w-[560px] [text-wrap:balance]"
+          <h1 className="display font-semibold max-w-[620px]"
             style={{ animation: "riseIn .9s cubic-bezier(.22,1,.36,1) .08s both" }}>
             {t("home.heroPre")} <em className="italic" style={{ color: "var(--crema)" }}>{t("home.heroEm")}</em> {t("home.heroPost")}
           </h1>
-          <p className="max-w-[330px] text-[15px] pb-[6px] leading-[1.65]" style={{ color: "var(--muted)", animation: "riseIn .9s cubic-bezier(.22,1,.36,1) .22s both" }}>
-            {t("home.heroSub")}
-          </p>
+          <div className="max-w-[330px] pb-[6px]" style={{ animation: "riseIn .9s cubic-bezier(.22,1,.36,1) .22s both" }}>
+            <p className="text-[15px] leading-[1.65]" style={{ color: "var(--muted)" }}>
+              {t("home.heroSub")}
+            </p>
+            {/* Signed-out visitors previously had no prominent way to create an account —
+                only "Sign in" in the nav. Browsing stays open; this is the sign-up path. */}
+            {/* key={lang}: the arrow's resting direction mirrors for Arabic, and it is a
+                useState initial value — which React only reads on mount. Keying by lang
+                remounts the button on a language switch so the angle actually follows. */}
+            {!loggedIn && (
+              <GetStartedButton key={lang} className="mt-[18px]" onClick={() => nav("/login")} />
+            )}
+          </div>
         </div>
 
         <div className="relative z-[1] mb-[18px]" style={{ animation: "riseIn .95s cubic-bezier(.22,1,.36,1) .3s both" }}>

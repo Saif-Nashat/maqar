@@ -33,16 +33,10 @@ export default function Nav() {
         boxShadow: "0 1px 0 rgba(255,255,255,.6) inset,0 6px 24px rgba(43,29,23,.05)",
       }}>
       <div className="max-w-wrap mx-auto px-[22px] py-3 flex items-center gap-[14px]">
-        <div className="flex items-center gap-[11px] cursor-pointer group" onClick={() => nav("/")}>
-          <div className="w-[38px] h-[38px] rounded-rs grid place-items-center font-serif font-bold text-[13px] tracking-[.5px] relative animate-floaty group-hover:[animation:none] transition-transform"
-            style={{
-              background: "var(--fill-dark)", color: "var(--cream)",
-              boxShadow: "0 2px 6px rgba(43,29,23,.25),0 0 0 1px rgba(255,255,255,.08) inset,0 1px 0 rgba(255,255,255,.14) inset",
-            }}>
-            MQR
-            <span className="absolute bottom-2 w-[17px] h-[2px] rounded-[2px]" style={{ background: "var(--cream)" }} />
-          </div>
-          <div className="font-serif font-semibold text-[24px] tracking-[-.5px]"
+        <div className="flex items-center cursor-pointer" onClick={() => nav("/")}>
+          {/* Wordmark only. The MQR badge was removed; the wordmark now carries the brand
+              on its own, so it is sized up from 24px to 27px to hold the same weight. */}
+          <div className="font-serif font-semibold text-[27px] tracking-[-.6px] leading-none"
             style={{
               background: "linear-gradient(110deg,var(--espresso) 60%,var(--coffee))",
               WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent",
