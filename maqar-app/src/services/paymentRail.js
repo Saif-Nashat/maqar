@@ -16,7 +16,8 @@ const LATENCY_MS = 600;
 const ref = () => `stub_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-export async function charge({ amount, card }) {
+// eslint-disable-next-line no-unused-vars
+export async function charge({ bookingId, amount, currency, card }) {
   if (!(amount > 0)) return { ok: false, error: "invalid_amount" };
   const number = (card?.number || "").replace(/\s/g, "");
   await wait(LATENCY_MS);
@@ -26,7 +27,8 @@ export async function charge({ amount, card }) {
   return { ok: true, providerRef: ref() };
 }
 
-export async function refund({ amount }) {
+// eslint-disable-next-line no-unused-vars
+export async function refund({ paymentId, amount }) {
   if (!(amount > 0)) return { ok: false, error: "invalid_amount" };
   await wait(LATENCY_MS);
   return { ok: true, providerRef: ref() };
