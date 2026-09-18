@@ -5,24 +5,8 @@ import { useApp } from "../store/AppContext.jsx";
 import { useSettings } from "../store/SettingsContext.jsx";
 import { useT } from "../i18n/index.jsx";
 import { roomText, AMMAN_CENTER } from "../data/rooms.js";
+import { TILES, TILE_ATTRIB } from "../lib/tiles.js";
 
-// CARTO watermarks keyless basemap tiles with "API KEY REQUIRED" (changed ~Aug 2026).
-// Set VITE_CARTO_KEY and the watermark goes away; without one the map still works, same
-// demo-vs-live spirit as the Supabase gate.
-//
-// The parameter is `key`, not `api_key`, and keyed access uses the /rastertiles/ path.
-// `{r}` is Leaflet's retina placeholder — it resolves to "@2x" on high-DPI screens and
-// CARTO serves those (verified: 12,436 bytes vs 4,745 for the 1x tile).
-//
-// Careful: a WRONG key does not error. CARTO returns HTTP 200 with the same watermarked
-// tile as no key at all, so the only way to tell the key is working is to look at the map.
-const CARTO_KEY = import.meta.env.VITE_CARTO_KEY;
-const KEY_Q = CARTO_KEY ? `?key=${CARTO_KEY}` : "";
-const TILES = {
-  light: `https://basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}{r}.png${KEY_Q}`,
-  dark: `https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png${KEY_Q}`,
-};
-const ATTRIB = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
 
 // Escape before interpolating: room titles are user-supplied once hosts can list rooms,
 // and this string goes into divIcon as raw HTML.
@@ -83,7 +67,7 @@ export default function MapView({ rooms, activeId, onHoverPin, userLoc }) {
       style={{ border: "1px solid var(--line)", boxShadow: "var(--shadow),0 0 0 1px rgba(201,162,126,.18)", isolation: "isolate" }}>
       <MapContainer center={[AMMAN_CENTER.lat, AMMAN_CENTER.lng]} zoom={13} scrollWheelZoom={false}
         style={{ height: "100%", width: "100%" }}>
-        <TileLayer key={theme} url={theme === "dark" ? TILES.dark : TILES.light} attribution={ATTRIB} />
+        <TileLayer key={theme} url={theme === "dark" ? TILES.dark : TILES.light} attribution={TILE_ATTRIB} />
         {userLoc && <Marker position={[userLoc.lat, userLoc.lng]} icon={userIcon} />}
         {rooms.map((r) => {
           const rt = roomText(r, lang);

@@ -73,7 +73,7 @@ export default function RoomCard({ room, onHover, active, distanceKm, featured =
           <small className="font-normal opacity-70 text-[11px]">{lang === "ar" ? "/ساعة" : "/hr"}</small>
         </div>
         {/* type tag, slides up on hover */}
-        <div className="absolute bottom-[10px] left-[10px] px-[9px] py-[4px] rounded-full text-[11px] font-semibold translate-y-1 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300"
+        <div className="absolute bottom-[10px] left-[10px] px-[9px] py-[4px] rounded-full text-[11px] font-semibold translate-y-1 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition duration-300"
           style={{ background: "rgba(251,247,240,.92)", color: "var(--fill-dark)", backdropFilter: "blur(6px)" }}>
           {t(`type.${room.type}`)}
         </div>

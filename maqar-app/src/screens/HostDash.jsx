@@ -277,7 +277,7 @@ function RevenueChart({ data, unit }) {
           return (
             <div key={i} className="flex-1 flex flex-col items-center justify-end gap-[6px] h-full">
               <span className="text-[10px] font-bold" style={{ color: last ? "var(--espresso)" : "var(--muted)" }}>{v}</span>
-              <div className="w-full rounded-t-[5px] transition-all" title={`${v} ${unit}`}
+              <div className="w-full rounded-t-[5px] transition" title={`${v} ${unit}`}
                 style={{
                   height: `${Math.max(8, (v / max) * 88)}%`,
                   background: last ? "linear-gradient(180deg,var(--crema),var(--fill-mid))" : "var(--foam)",

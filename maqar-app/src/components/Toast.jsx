@@ -4,7 +4,7 @@ export default function Toast() {
   const { toastMsg, toastShown } = useApp();
   return (
     <div
-      className="fixed bottom-6 left-1/2 z-[200] px-[22px] py-[13px] rounded-xl text-[14px] font-semibold pointer-events-none transition-all duration-300"
+      className="fixed bottom-6 left-1/2 z-[200] px-[22px] py-[13px] rounded-xl text-[14px] font-semibold pointer-events-none transition duration-300"
       style={{
         color: "var(--cream)",
         background: "linear-gradient(150deg,rgba(51,35,27,.96),rgba(36,24,18,.96))",

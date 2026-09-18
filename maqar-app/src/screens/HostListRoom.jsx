@@ -14,12 +14,8 @@ import ListingCard from "../components/ListingCard.jsx";
 import { useRequireAccount } from "../lib/guards.jsx";
 import { uploadRoomPhoto } from "../services/db.js";
 import { IMG, AREA_COORDS, AMMAN_CENTER } from "../data/rooms.js";
+import { TILES, TILE_ATTRIB } from "../lib/tiles.js";
 
-const TILES = {
-  light: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-  dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-};
-const ATTRIB = '&copy; OpenStreetMap &copy; CARTO';
 const pinIcon = (price, cur) =>
   L.divIcon({ className: "maqar-pin-wrap", html: `<div class="maqar-pin">${price}<span>${cur}</span></div>`, iconSize: [54, 32], iconAnchor: [27, 34] });
 
@@ -142,7 +138,7 @@ function Stepper({ step, setStep, t }) {
             <button onClick={() => n < step && setStep(n)} disabled={n > step}
               className="flex items-center gap-[9px] px-[4px] sm:px-[10px] py-[7px] rounded-xl transition-colors"
               style={{ cursor: n < step ? "pointer" : active ? "default" : "not-allowed" }}>
-              <span className="w-[26px] h-[26px] sm:w-[30px] sm:h-[30px] rounded-full grid place-items-center transition-all shrink-0"
+              <span className="w-[26px] h-[26px] sm:w-[30px] sm:h-[30px] rounded-full grid place-items-center transition shrink-0"
                 style={active
                   ? { background: "linear-gradient(150deg,var(--fill-dark),var(--fill-mid))", color: "var(--cream)", boxShadow: "0 4px 12px rgba(43,29,23,.28)" }
                   : done
@@ -251,7 +247,7 @@ function Locator({ draft, set, t, lang }) {
 
       <div className="relative rounded-r overflow-hidden h-[340px]" style={{ border: "1px solid var(--line)", isolation: "isolate" }}>
         <MapContainer center={[start.lat, start.lng]} zoom={14} scrollWheelZoom={false} style={{ height: "100%", width: "100%", cursor: "crosshair" }}>
-          <TileLayer key={theme} url={theme === "dark" ? TILES.dark : TILES.light} attribution={ATTRIB} />
+          <TileLayer key={theme} url={theme === "dark" ? TILES.dark : TILES.light} attribution={TILE_ATTRIB} />
           <Recenter area={draft.area} />
           <ClickToPlace onPlace={(lat, lng) => set({ lat, lng })} />
           {placed && (
@@ -300,7 +296,7 @@ function Photos({ draft, set, t, live, userId, addImg }) {
       <p className="text-[14px] mb-5" style={{ color: "var(--muted)" }}>{t("list.photosSub")}</p>
 
       {live && (
-        <label className="block w-full rounded-[16px] p-5 text-center mb-3 cursor-pointer transition-all"
+        <label className="block w-full rounded-[16px] p-5 text-center mb-3 cursor-pointer transition"
           style={{ border: "2px solid var(--crema)", background: "rgba(201,162,126,.08)", color: "var(--coffee)" }}>
           <input type="file" accept="image/*" multiple className="hidden" onChange={onFiles} />
           <Camera className="w-6 h-6 mx-auto mb-1 opacity-80" />
@@ -312,7 +308,7 @@ function Photos({ draft, set, t, live, userId, addImg }) {
         onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
         onDragLeave={() => setDrag(false)}
         onDrop={(e) => { e.preventDefault(); setDrag(false); addPhoto(); }}
-        className="w-full rounded-[16px] p-9 text-center transition-all"
+        className="w-full rounded-[16px] p-9 text-center transition"
         style={{
           border: `2px dashed ${drag ? "var(--crema)" : "var(--line)"}`,
           background: drag ? "rgba(201,162,126,.1)" : "var(--foam)",
@@ -359,7 +355,7 @@ function Amenities({ draft, set, t }) {
           const on = draft.feats.includes(f);
           return (
             <button key={f} onClick={() => toggle(f)}
-              className="relative flex items-center gap-[10px] p-[13px] rounded-[12px] text-[14px] font-semibold transition-all"
+              className="relative flex items-center gap-[10px] p-[13px] rounded-[12px] text-[14px] font-semibold transition"
               style={on
                 ? { background: "var(--surface)", border: "1.5px solid var(--crema)", color: "var(--espresso)", boxShadow: "0 4px 14px rgba(201,162,126,.22)" }
                 : { background: "var(--foam)", border: "1.5px solid var(--line)", color: "var(--coffee)" }}>

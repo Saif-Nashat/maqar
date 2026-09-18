@@ -391,7 +391,7 @@ function CreateAccount({ t, addr, onChange, err, busy, acctType, setAcctType, na
 function RoleCard({ active, onClick, Icon, title, sub }) {
   return (
     <button onClick={onClick} aria-pressed={active}
-      className="text-start p-[11px] rounded-[13px] transition-all relative"
+      className="text-start p-[11px] rounded-[13px] transition relative"
       style={active
         ? { background: "var(--surface)", border: "2px solid var(--crema)", boxShadow: "var(--shadow)" }
         : { background: "var(--surface-sunken)", border: "2px solid transparent" }}>

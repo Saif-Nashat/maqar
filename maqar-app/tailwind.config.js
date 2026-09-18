@@ -1,5 +1,9 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  // Wraps every `hover:` utility in `@media (hover: hover)`. Without this, tapping on a
+  // touch screen fires :hover and it sticks until you tap elsewhere — so a tapped card
+  // stays lifted and a tapped chip stays raised. Default in Tailwind v4; opt-in on v3.
+  future: { hoverOnlyWhenSupported: true },
   darkMode: "class",
   content: ["./index.html", "./src/**/*.{js,jsx}"],
   theme: {

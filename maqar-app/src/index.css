@@ -411,3 +411,42 @@
 }
 .dark .leaflet-control-attribution { background: rgba(21, 16, 11, .7) !important; }
 .dark .leaflet-control-attribution a { color: var(--crema) !important; }
+
+/* ===== Motion: touch and reduced-motion guards =====
+   Placed last on purpose. @keyframes with a repeated name is resolved by document order,
+   so these redefinitions win over the ones Tailwind generates and the ones above. */
+
+/* Touch devices fire :hover on tap and keep it until you tap elsewhere. Tailwind's
+   hoverOnlyWhenSupported handles the `hover:` utilities; these are the hand-written rules. */
+@media (hover: none) {
+  .chip:hover { transform: none; }
+  .fan-card:hover .fan-inner { transform: none; box-shadow: var(--shadow-lg); }
+  .pin:hover .pin-dot { transform: none; stroke-width: 2; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Entrances keep their names, durations and call sites — they simply stop travelling.
+     A fade still tells you content arrived; nothing slides across the screen. */
+  @keyframes riseIn   { from { opacity: 0 } to { opacity: 1 } }
+  @keyframes galRise  { from { opacity: 0 } to { opacity: 1 } }
+  @keyframes biIn     { from { opacity: 0 } to { opacity: 1 } }
+  @keyframes cellIn   { from { opacity: 0 } to { opacity: 1 } }
+  @keyframes fanOut   { from { opacity: 0 } to { opacity: 1 } }
+  @keyframes screenIn { from { opacity: 0 } to { opacity: 1 } }
+  @keyframes modalIn  { from { opacity: 0 } to { opacity: 1 } }
+  @keyframes flipIn   { from { opacity: 0 } to { opacity: 1 } }
+  @keyframes popCheck { from { opacity: 0 } to { opacity: 1 } }
+
+  /* The fan's resting position is set by the animation's end state, which the redefinition
+     above no longer provides. Restore it statically so the cards still fan out. */
+  .fan-card {
+    transform: translate(calc(var(--fx) * var(--fan-k)), calc(var(--fy) * var(--fan-k))) rotate(var(--fr));
+  }
+
+  /* Decoration that never stops is the worst case for motion sensitivity. */
+  .animate-mesh, .animate-floaty { animation: none; }
+  .verify-badge::after { animation: none; opacity: 0; }
+
+  /* Hover lifts are brief and user-initiated, so they stay — but nothing should travel. */
+  .chip:hover, .card-hover:hover { transform: none; }
+}

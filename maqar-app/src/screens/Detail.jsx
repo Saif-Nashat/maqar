@@ -157,7 +157,7 @@ function Gallery({ imgs = [], title, onOpen }) {
               ${i === 0 && layout.spanFirst ? "row-span-2" : ""} ${isLast && layout.spanLast ? "col-span-2" : ""}`}
             style={{ animation: `galRise .6s cubic-bezier(.22,1,.36,1) ${0.05 + i * 0.07}s both` }}>
             <img src={img} alt={`${title} — photo ${i + 1} of ${imgs.length}`}
-              className="w-full h-full object-cover transition-all group-hover:brightness-105 group-hover:saturate-[1.06]" />
+              className="w-full h-full object-cover transition group-hover:brightness-105 group-hover:saturate-[1.06]" />
             {isLast && extra > 0 && (
               <span className="absolute inset-0 grid place-items-center text-[15px] font-semibold"
                 style={{ background: "rgba(43,29,23,.55)", color: "var(--cream)" }}>+{extra}</span>

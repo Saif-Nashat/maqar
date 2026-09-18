@@ -80,7 +80,7 @@ export default function Booking() {
 
       <div className="flex gap-2 mb-7">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="flex-1 h-[5px] rounded-[3px] transition-all"
+          <div key={i} className="flex-1 h-[5px] rounded-[3px] transition"
             style={{ background: i <= step ? "var(--crema)" : "var(--line)", boxShadow: i <= step ? "0 0 0 1px rgba(201,162,126,.5)" : "none" }} />
         ))}
       </div>
@@ -105,7 +105,7 @@ export default function Booking() {
                   return (
                     <button key={s} disabled={gone} onClick={() => setBooking((b) => ({ ...b, slot: s }))}
                       title={gone ? t("book.taken") : undefined}
-                      className={`slot py-[11px] rounded-[10px] text-[13px] font-semibold transition-all ${gone ? "line-through cursor-not-allowed" : "hover:-translate-y-[2px]"}`}
+                      className={`slot py-[11px] rounded-[10px] text-[13px] font-semibold transition ${gone ? "line-through cursor-not-allowed" : "hover:-translate-y-[2px]"}`}
                       style={on
                         ? { background: "linear-gradient(150deg,var(--fill-dark),var(--fill-mid))", color: "var(--cream)", border: "1px solid var(--fill-dark)", boxShadow: "0 4px 12px rgba(43,29,23,.25)" }
                         : { background: "var(--surface)", color: "var(--coffee)", border: "1px solid var(--line)", opacity: gone ? 0.4 : 1 }}>
@@ -123,7 +123,7 @@ export default function Booking() {
                   const on = booking.dur === d;
                   return (
                     <button key={d} onClick={() => setBooking((b) => ({ ...b, dur: d }))}
-                      className="flex-1 min-w-[80px] py-[11px] rounded-[10px] text-[13px] font-semibold transition-all hover:-translate-y-[2px]"
+                      className="flex-1 min-w-[80px] py-[11px] rounded-[10px] text-[13px] font-semibold transition hover:-translate-y-[2px]"
                       style={on
                         ? { background: "linear-gradient(150deg,var(--fill-dark),var(--fill-mid))", color: "var(--cream)", border: "1px solid var(--fill-dark)", boxShadow: "0 4px 12px rgba(43,29,23,.25)" }
                         : { background: "var(--surface)", color: "var(--coffee)", border: "1px solid var(--line)" }}>
@@ -169,7 +169,7 @@ export default function Booking() {
             </div>
 
             <button onClick={() => setBooking((b) => ({ ...b, proof: true }))}
-              className="w-full rounded-[14px] p-7 text-center transition-all"
+              className="w-full rounded-[14px] p-7 text-center transition"
               style={booking.proof
                 ? { border: "2px solid var(--good)", color: "var(--good)", background: "rgba(63,122,78,.06)" }
                 : { border: "2px dashed var(--line)", color: "var(--muted)" }}>
