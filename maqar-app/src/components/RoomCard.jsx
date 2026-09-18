@@ -6,7 +6,10 @@ import { useT } from "../i18n/index.jsx";
 import { roomText } from "../data/rooms.js";
 import { combinedRating } from "../lib/ratings.js";
 
-export default function RoomCard({ room, onHover, active, distanceKm }) {
+// `featured` renders the same card at a larger scale for the lead slot in the grid. It only
+// changes size and surface tier — not structure — so every badge, price and interaction
+// stays identical and there is no second card component to keep in sync.
+export default function RoomCard({ room, onHover, active, distanceKm, featured = false }) {
   const nav = useNavigate();
   const { loggedIn, accountType, setCurrentRoom, resetBooking, pendingAction, toast, isFavorite, toggleFavorite, getReviews } = useApp();
   const { t, lang } = useT();
@@ -39,10 +42,10 @@ export default function RoomCard({ room, onHover, active, distanceKm }) {
   }
 
   return (
-    <div className="surface card-hover overflow-hidden flex flex-col group"
+    <div className={`${featured ? "surface-raised" : "surface"} card-hover overflow-hidden flex flex-col group`}
       onMouseEnter={() => onHover?.(room.id)} onMouseLeave={() => onHover?.(null)}
       style={active ? { borderColor: "var(--crema)", boxShadow: "var(--shadow-lg),0 0 0 2px var(--crema)" } : undefined}>
-      <div className="relative h-[176px] overflow-hidden cursor-pointer" onClick={openDetail}>
+      <div className={`relative overflow-hidden cursor-pointer ${featured ? "h-[176px] lg:h-[332px]" : "h-[176px]"}`} onClick={openDetail}>
         <img src={room.imgs[0]} alt={rt.title}
           className="w-full h-full object-cover transition-transform duration-[600ms] ease-smooth group-hover:scale-105 group-hover:saturate-[1.08]" />
         <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
@@ -78,7 +81,7 @@ export default function RoomCard({ room, onHover, active, distanceKm }) {
 
       <div className="p-[16px] pt-[14px] flex-1 flex flex-col">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-sans text-[16px] font-bold leading-tight cursor-pointer group-hover:text-[var(--crema)] transition-colors" onClick={openDetail}>
+          <h3 className={`font-sans font-bold leading-tight cursor-pointer group-hover:text-[var(--crema)] transition-colors ${featured ? "text-[16px] lg:text-[21px]" : "text-[16px]"}`} onClick={openDetail}>
             {rt.title}
           </h3>
           <span className="num flex items-center gap-[3px] text-[13px] font-bold shrink-0 mt-[1px]" style={{ color: "var(--espresso)" }}>

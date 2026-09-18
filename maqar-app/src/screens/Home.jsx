@@ -28,6 +28,25 @@ function useFiltered(filters, all) {
   }, [filters, all]);
 }
 
+// Decides which card in the visible, already-filtered and already-sorted list gets the
+// large lead slot in the grid.
+//
+// `list` is an array of { room, dist } in the exact order they will render. `room` carries
+// { title, type, price, cap, rating, reviews, verified, feats, imgs, lat, lng }, and `dist`
+// is km from the user when "Near me" is on, otherwise null.
+//
+// Return the index to feature, or -1 for no featured card at all.
+function pickFeaturedIndex(list) {
+  // Always the top result, never a different room chosen by some rule of our own. The list
+  // arrives sorted by whatever the user picked, so promoting anything else would quietly
+  // overrule the sort control they just used — "Price: low to high" leading with an
+  // expensive room reads as a bug.
+  //
+  // Below three cards the wide slot leaves a visible hole in the row, so nothing is
+  // featured and the grid stays uniform.
+  return list.length >= 3 ? 0 : -1;
+}
+
 export default function Home() {
   const { filters, favorites, toast, rooms: allRooms } = useApp();
   const { t, lang } = useT();
@@ -49,6 +68,7 @@ export default function Home() {
   }, [base, layer, favorites, userLoc]);
 
   const rooms = display.map((d) => d.room);
+  const featuredIndex = useMemo(() => pickFeaturedIndex(display), [display]);
   const scrollToResults = () => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   function nearMe() {
@@ -129,11 +149,15 @@ export default function Home() {
           </div>
         </div>
 
-        <div ref={gridRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 pb-10">
+        {/* items-start so a short card beside the featured one sits at the top of the row
+            rather than stretching to match its height. The lead card spans two columns from
+            lg up; below that every card is the same width and the grid reads as before. */}
+        <div ref={gridRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 pb-10 items-start">
           {display.length ? (
-            display.map(({ room, dist }) => (
-              <div key={room.id} className="reveal">
+            display.map(({ room, dist }, i) => (
+              <div key={room.id} className={`reveal ${i === featuredIndex ? "lg:col-span-2" : ""}`}>
                 <RoomCard room={room} onHover={setHoveredId} active={hoveredId === room.id}
+                  featured={i === featuredIndex}
                   distanceKm={dist != null ? dist.toFixed(1) : undefined} />
               </div>
             ))
