@@ -117,6 +117,15 @@ export function AppProvider({ children }) {
   const closeModal = useCallback(() => setModal(null), []);
 
   const pendingAction = useRef(null);
+  // Reads the queued action and clears it, in one step and inside the provider that owns
+  // the ref. Callers used to do `const a = pendingAction.current; pendingAction.current = null`,
+  // which mutates a value handed back from a hook — react-hooks/immutability flags that at
+  // the assignment *and* at every callback that reaches it.
+  const consumePendingAction = useCallback(() => {
+    const action = pendingAction.current;
+    pendingAction.current = null;
+    return action;
+  }, []);
 
   // ----- auth -----
   const signUp = useCallback(async ({ email, password, type, name }) => {
@@ -260,7 +269,7 @@ export function AppProvider({ children }) {
     resetBooking,
     toast, toastMsg, toastShown,
     modal, openModal, closeModal,
-    pendingAction,
+    pendingAction, consumePendingAction,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
