@@ -7,16 +7,21 @@ import { useSettings } from "../store/SettingsContext.jsx";
 import { useT } from "../i18n/index.jsx";
 import { roomText, AMMAN_CENTER } from "../data/rooms.js";
 
-// CARTO now watermarks keyless basemap tiles with "API KEY REQUIRED". Supply a key
-// via VITE_CARTO_KEY and the watermark goes away; without one the map still works,
-// same demo-vs-live spirit as the Supabase gate.
-// NOTE: confirm the query-parameter name against your CARTO dashboard when you get
-// the key — this assumes `api_key`, which is their documented basemap parameter.
+// CARTO watermarks keyless basemap tiles with "API KEY REQUIRED" (changed ~Aug 2026).
+// Set VITE_CARTO_KEY and the watermark goes away; without one the map still works, same
+// demo-vs-live spirit as the Supabase gate.
+//
+// The parameter is `key`, not `api_key`, and keyed access uses the /rastertiles/ path.
+// `{r}` is Leaflet's retina placeholder — it resolves to "@2x" on high-DPI screens and
+// CARTO serves those (verified: 12,436 bytes vs 4,745 for the 1x tile).
+//
+// Careful: a WRONG key does not error. CARTO returns HTTP 200 with the same watermarked
+// tile as no key at all, so the only way to tell the key is working is to look at the map.
 const CARTO_KEY = import.meta.env.VITE_CARTO_KEY;
-const KEY_Q = CARTO_KEY ? `?api_key=${CARTO_KEY}` : "";
+const KEY_Q = CARTO_KEY ? `?key=${CARTO_KEY}` : "";
 const TILES = {
-  light: `https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png${KEY_Q}`,
-  dark: `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png${KEY_Q}`,
+  light: `https://basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}{r}.png${KEY_Q}`,
+  dark: `https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png${KEY_Q}`,
 };
 const ATTRIB = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
 

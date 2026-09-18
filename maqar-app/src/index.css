@@ -145,6 +145,44 @@
      countdown visibly jitter. */
   .num { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1; }
 
+  /* ---- Hero room fan ----
+     Adapted from the "Gallery" component by @designali-in on 21st.dev. The original used
+     framer-motion springs plus next/image; this is the same fan built on CSS transforms so
+     it costs no new dependencies and stays inside the project's existing motion system.
+     Two nested elements on purpose: .fan-card owns the fanned-out position (which the
+     entry animation fills), .fan-inner owns the hover scale. If one element did both, the
+     animation's fill-mode would overwrite the hover transform. */
+  .fan { position: relative; height: 300px; }
+  .fan-card {
+    position: absolute; left: 50%; top: 0; width: 220px; height: 220px; margin-left: -110px;
+    transform: translate(var(--fx), var(--fy)) rotate(var(--fr));
+  }
+  .fan-card:hover { z-index: 60; }
+  .fan-inner {
+    display: block; width: 100%; height: 100%; border-radius: 20px; overflow: hidden;
+    border: 5px solid var(--surface); box-shadow: var(--shadow-lg);
+    transition: transform .45s var(--ease), box-shadow .45s var(--ease);
+  }
+  .fan-card:hover .fan-inner { transform: scale(1.07); box-shadow: var(--shadow-raised); }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .fan-card { animation: fanOut .85s var(--ease) both; }
+  }
+
+  /* The fan is ~860px wide at rest. Below that it becomes a snap-scrolling row instead of
+     overlapping itself. !important is needed to beat the animation's `both` fill-mode. */
+  @media (max-width: 900px) {
+    .fan {
+      height: auto; display: flex; gap: 12px; overflow-x: auto;
+      padding-bottom: 10px; scroll-snap-type: x mandatory;
+    }
+    .fan-card {
+      position: static; margin-left: 0; flex: 0 0 180px; height: 180px;
+      transform: none !important; animation: none; scroll-snap-align: start;
+    }
+    .fan-card:hover .fan-inner { transform: none; }
+  }
+
   /* ---- Surface tiers (see the token block for why) ---- */
   .surface-sunken {
     background: var(--surface-sunken);
@@ -270,6 +308,11 @@
 @keyframes pulse2 { 0% { opacity: .35; transform: scale(1); } 100% { opacity: 0; transform: scale(2.1); } }
 @keyframes cellIn { from { opacity: 0; transform: scaleX(.6); } to { opacity: 1; transform: none; } }
 @keyframes galRise { from { opacity: 0; transform: translateY(16px) scale(1.03); } to { opacity: 1; transform: none; } }
+/* Cards start stacked at centre and fan out to their --fx/--fy/--fr resting position. */
+@keyframes fanOut {
+  from { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(.9); }
+  to   { opacity: 1; transform: translate(var(--fx), var(--fy)) rotate(var(--fr)) scale(1); }
+}
 @keyframes biIn { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
 @keyframes flipIn { from { opacity: 0; transform: rotateX(-90deg) translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes riseIn { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
