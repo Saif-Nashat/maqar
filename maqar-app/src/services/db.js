@@ -27,40 +27,109 @@ export async function addReviewDb({ roomId, authorId, authorName, rating, text }
 }
 
 /* ---------------- payments ---------------- */
+// Written only by the transition functions. The client reads and nothing else.
+
 export async function fetchPayments() {
-  const { data } = await supabase.from("payments").select("*").order("created_at", { ascending: false });
-  return (data || []).map((p) => ({ id: p.id, roomId: p.room_id, label: p.label, amount: Number(p.amount), method: p.method, status: p.status, date: (p.created_at || "").slice(0, 10) }));
-}
-export async function addPaymentDb({ userId, roomId, label, amount, method = "CliQ", status = "Paid" }) {
-  const { data } = await supabase.from("payments").insert({ user_id: userId, room_id: roomId, label, amount, method, status }).select().single();
-  return data;
+  const { data } = await supabase
+    .from("payments")
+    .select("*, bookings(room_id, starts_at)")
+    .order("created_at", { ascending: false });
+  return (data || []).map((p) => ({
+    id: p.id,
+    bookingId: p.booking_id,
+    roomId: p.bookings?.room_id || null,
+    kind: p.kind,
+    status: p.status,
+    amount: Number(p.amount),
+    currency: p.currency,
+    date: (p.created_at || "").slice(0, 10),
+  }));
 }
 
 /* ---------------- bookings ---------------- */
-// RLS returns: the guest's own bookings + bookings for rooms the host owns.
+// Reads come straight from the table (RLS scopes them). Every WRITE goes
+// through an RPC — the client has no insert or update privilege on bookings.
+
 export async function fetchBookings() {
-  const { data } = await supabase.from("bookings").select("*, rooms(*)").order("created_at", { ascending: false });
-  return (data || []).map((b) => ({
-    id: b.id, roomId: b.room_id, guestId: b.guest_id, date: b.date, slot: b.slot, dur: Number(b.dur),
-    status: b.status, code: b.code, total: Number(b.total), createdAt: b.created_at,
+  const { data } = await supabase
+    .from("bookings")
+    .select("*, rooms(*)")
+    .order("starts_at", { ascending: true });
+  return (data || []).map(mapBookingRow);
+}
+
+export function mapBookingRow(b) {
+  return {
+    id: b.id,
+    roomId: b.room_id,
+    guestId: b.guest_id,
+    startsAt: b.starts_at,
+    endsAt: b.ends_at,
+    status: b.status,
+    total: Number(b.total),
+    commissionRate: Number(b.commission_rate),
+    commissionAmount: b.commission_amount == null ? null : Number(b.commission_amount),
+    hostPayoutAmount: b.host_payout_amount == null ? null : Number(b.host_payout_amount),
+    refundPolicy: b.refund_policy,
+    approvedAt: b.approved_at,
+    paymentDeadline: b.payment_deadline,
+    confirmedAt: b.confirmed_at,
+    completedAt: b.completed_at,
+    cancelledAt: b.cancelled_at,
+    denialReason: b.denial_reason,
     room: b.rooms ? mapRoomRow(b.rooms) : null,
-  }));
+  };
 }
-export async function createBookingDb({ roomId, guestId, date, slot, dur, status, code, total }) {
-  const { data, error } = await supabase.from("bookings")
-    .insert({ room_id: roomId, guest_id: guestId, date, slot, dur, status, code, total })
-    .select("*, rooms(*)").single();
-  return { data, error };
+
+export async function requestBookingDb({ roomId, startsAt, endsAt }) {
+  const { data, error } = await supabase.rpc("request_booking", {
+    p_room_id: roomId, p_starts_at: startsAt, p_ends_at: endsAt,
+  });
+  return { data: data ? mapBookingRow(data) : null, error };
 }
-export async function updateBookingDb(id, patch) {
-  const { data, error } = await supabase.from("bookings").update(patch).eq("id", id).select("*, rooms(*)").single();
-  return { data, error };
+
+export async function approveBookingDb(id) {
+  const { data, error } = await supabase.rpc("approve_booking", { p_booking_id: id });
+  return { data: data ? mapBookingRow(data) : null, error };
 }
-export async function takenSlotsDb(roomId, date) {
-  const { data } = await supabase.from("bookings").select("slot")
-    .eq("room_id", roomId).eq("date", date)
-    .in("status", ["PendingHost", "Confirmed", "Upcoming"]);
-  return (data || []).map((b) => b.slot);
+
+export async function denyBookingDb(id, reason) {
+  const { data, error } = await supabase.rpc("deny_booking", { p_booking_id: id, p_reason: reason });
+  return { data: data ? mapBookingRow(data) : null, error };
+}
+
+export async function cancelBookingDb(id) {
+  const { data, error } = await supabase.rpc("cancel_booking", { p_booking_id: id });
+  return { data: data ? mapBookingRow(data) : null, error };
+}
+
+export async function confirmBookingPaymentDb(id, providerRef) {
+  const { data, error } = await supabase.rpc("confirm_booking_payment", {
+    p_booking_id: id, p_provider_ref: providerRef,
+  });
+  return { data: data ? mapBookingRow(data) : null, error };
+}
+
+export async function validateArrivalCodeDb(id, code) {
+  const { data, error } = await supabase.rpc("validate_arrival_code", {
+    p_booking_id: id, p_code: code,
+  });
+  return { data: data ? mapBookingRow(data) : null, error };
+}
+
+// Guests only — RLS denies this to the host, deliberately.
+export async function fetchArrivalCode(bookingId) {
+  const { data } = await supabase.from("booking_codes").select("code").eq("booking_id", bookingId).maybeSingle();
+  return data?.code || null;
+}
+
+export async function bookedRangesDb(roomId, fromIso, toIso) {
+  const { data } = await supabase
+    .from("bookings").select("starts_at, ends_at")
+    .eq("room_id", roomId)
+    .in("status", ["Requested", "Approved", "Confirmed"])
+    .gte("starts_at", fromIso).lt("starts_at", toIso);
+  return (data || []).map((b) => ({ startsAt: b.starts_at, endsAt: b.ends_at }));
 }
 
 /* ---------------- messages ---------------- */
