@@ -1,6 +1,6 @@
 # Maqar — Session Log & Roadmap
 
-_Last updated: 2026-09-17_
+_Last updated: 2026-09-18_
 
 This file logs what was built in this session and what's left for the future. Treat it as the
 single source of truth for picking the project back up.
@@ -29,7 +29,7 @@ Two implementations exist in `C:\Users\VICTUS\OneDrive\Desktop\Bootcamp`:
 | Styling | Tailwind CSS v3 + a custom token system (`src/index.css`, `tailwind.config.js`) |
 | Routing | react-router-dom v7 |
 | Icons | lucide-react |
-| Maps | Leaflet + react-leaflet v5, CARTO tiles (light/dark, no API key) |
+| Maps | Leaflet + react-leaflet v5, CARTO tiles (light/dark, **API key required** — see `lib/tiles.js`) |
 | State | React Context (`src/store/AppContext.jsx`) + `localStorage` (demo) |
 | Backend | **Supabase** (Postgres + Auth + Storage + Realtime) |
 | i18n | custom (`src/i18n/index.jsx`), English + Arabic with full RTL |
@@ -193,3 +193,87 @@ bilingual, dark-mode React app on a live Supabase backend (verified live-mode, R
 secrets in the bundle, realtime chat enabled, test data purged), with the full host→guest booking
 loop working end-to-end. Everything on the "go live" checklist is done; what remains is the
 product-hardening roadmap.**
+
+---
+
+## 9. Design and product phase — 17–18 September
+
+Full findings, decisions and the build plan live in the **Maqar Redesign Brief**:
+<https://claude.ai/code/artifact/4d629223-874c-43d0-bebc-2db535b9e8bb>
+Read that before picking up product work. This section is the code-level summary.
+
+### The finding that reframed the project
+
+The capstone deck sells a **15% take-rate**, but nothing in the product ever took it. The
+CliQ alias at checkout is a hardcoded platform alias (`MAQAR.PAY` in `Booking.jsx`) — not
+the host's — so the deposit half *does* reach an account Maqar controls. The other half is
+cash between guest and host and is invisible. There is no commission calculation, no payout
+record and no ledger anywhere in the codebase.
+
+So the fix is a ledger and a payout process, not a re-plumbing of the money flow.
+
+**Open decision.** Escrow (100% online) was agreed, then reopened. Current proposal on the
+table is *the online payment IS the commission* — guest pays 15% online non-refundable,
+host collects 85% in venue. That version needs no payouts and likely avoids payment-
+aggregator licensing, because Maqar only ever collects its own fee. Not yet decided.
+
+### Design system
+
+- Four surface tiers (`--surface-sunken` / `--bg` / `--surface` / `--surface-raised`),
+  separated by elevation in light and by value in dark. Replaces one card treatment that
+  was repeated 38 times across 8 screens.
+- Paper grain on the page ground via `body::before` at `z-index: -1`.
+- `.display` / `.display-sm` take manual control of Fraunces' `opsz` axis; `.num` gives
+  tabular figures to anything a reader compares or watches tick.
+- **Tailwind's colour theme now points at the CSS custom properties.** This fixed a real
+  bug — `bg-foam` was frozen at the light hex while `--foam` swapped in dark. Caveat:
+  slash-opacity modifiers (`bg-foam/50`) do not work with `var()` colours.
+
+### Mobile-first
+
+Mobile is the primary target; check at 375px before desktop. Five real breakages fixed:
+nav was 502px wide in a 375px viewport, booking-card buttons were clipped off-screen, the
+host wizard's fifth step was cut off, the hero pushed 64px of horizontal scroll, and every
+text input was 15px — which makes iOS Safari zoom in on focus and never zoom back.
+
+### Auth
+
+`Login.jsx` is an identifier-first flow (the Amazon pattern): email decides whether you
+land on sign-in or account creation, and the address rides along with a Change affordance.
+Account type is chosen on the create form.
+
+**Supabase will not tell you whether an email exists** — that is deliberate account-
+enumeration protection, and "no such user" and "wrong password" return identical errors.
+The new/returning branch therefore reads `maqar-known-emails` from localStorage, and the
+"new to us" screen always carries a sign-in link so it can never be a dead end.
+
+Phone and Google/Facebook/Apple are shown disabled with Soon badges. None are enabled in
+Supabase auth settings.
+
+### Motion
+
+- `lib/tiles.js` is the single CARTO tile definition. It was duplicated, and only MapView
+  had the API key, so the host's location picker stayed watermarked.
+- No `transition-all` anywhere — it watches layout-triggering properties.
+- `hoverOnlyWhenSupported` in `tailwind.config.js` wraps every `hover:` utility in
+  `(hover:hover) and (pointer:fine)`; a `@media (hover: none)` block covers hand-written
+  rules. Without this, tapping on touch leaves the hover state stuck.
+- Movement keyframes are **redefined as opacity-only inside the reduced-motion block** at
+  the end of `index.css`. `@keyframes` resolves by document order, so the same names and
+  durations simply stop travelling — no call site needs changing. Infinite decorative
+  loops stop entirely.
+
+### Environments — one database, no staging
+
+Three Vercel environments, one Supabase project, zero branches, and the `VITE_SUPABASE_*`
+vars are set on all three. **Every preview deploy reads and writes production Postgres.**
+Adding a staging environment is W2 in the brief; not done.
+
+### Still true and still open
+
+- Production has exactly **one account and it is a guest** — the host side is untestable
+  on the live site until someone signs up as a host.
+- Email confirmation is off, so anyone can sign up with a fake address.
+- `npm run lint` now reports **11** pre-existing errors, down from 12: rewriting
+  `Login.jsx` let `pendingAction.current = null` be replaced by `consumePendingAction()`
+  in `AppContext`, which removed a `react-hooks/immutability` error properly.
