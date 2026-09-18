@@ -1,7 +1,6 @@
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import { useNavigate } from "react-router-dom";
-import { MapPin } from "lucide-react";
 import { useApp } from "../store/AppContext.jsx";
 import { useSettings } from "../store/SettingsContext.jsx";
 import { useT } from "../i18n/index.jsx";
@@ -32,14 +31,29 @@ function esc(s) {
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
-// Pins carry the room name rather than the price — the name is what identifies a place on
-// a map; the price is already on every room card. Width is variable, so the icon is sized
-// from the label length and the CSS caps it with an ellipsis at 150px.
+// Pins carry a shortened room name, not the full title — a full name makes the pin wider
+// than the thing it points at. Truncation is at a word boundary so labels never cut
+// mid-word ("The Crema…", not "The Crema Boa…"). The full name is in the tooltip and the
+// popup, and the price is already on every room card.
+const PIN_CHARS = 15;
+function shortLabel(title) {
+  const s = String(title).trim();
+  if (s.length <= PIN_CHARS) return s;
+  let out = "";
+  for (const word of s.split(/\s+/)) {
+    const next = out ? `${out} ${word}` : word;
+    if (next.length > PIN_CHARS) break;
+    out = next;
+  }
+  return `${out || s.slice(0, PIN_CHARS)}…`;
+}
+
 function titleIcon(title, active) {
-  const w = Math.min(150, Math.max(54, String(title).length * 7 + 24));
+  const label = shortLabel(title);
+  const w = Math.min(126, Math.max(50, label.length * 7 + 22));
   return L.divIcon({
     className: "maqar-pin-wrap",
-    html: `<div class="maqar-pin${active ? " active" : ""}" title="${esc(title)}">${esc(title)}</div>`,
+    html: `<div class="maqar-pin${active ? " active" : ""}" title="${esc(title)}">${esc(label)}</div>`,
     iconSize: [w, 32],
     iconAnchor: [w / 2, 34],
     popupAnchor: [0, -34],
@@ -92,17 +106,6 @@ export default function MapView({ rooms, activeId, onHoverPin, userLoc }) {
         })}
       </MapContainer>
 
-      {/* overlays */}
-      <div className="absolute top-[14px] left-[14px] right-[14px] flex gap-[10px] items-center z-[500] pointer-events-none">
-        <div className="flex items-center gap-1 rounded-full px-[14px] py-2 text-[13px] font-semibold"
-          style={{ background: "rgba(251,247,240,.92)", backdropFilter: "blur(8px)", border: "1px solid var(--line)", color: "var(--fill-dark)", boxShadow: "var(--shadow)" }}>
-          <MapPin className="w-[14px] h-[14px]" /> {t("search.amman")}
-        </div>
-        <div className="rounded-full px-[14px] py-2 text-[13px] font-semibold"
-          style={{ background: "rgba(251,247,240,.92)", backdropFilter: "blur(8px)", border: "1px solid var(--line)", color: "var(--fill-dark)", boxShadow: "var(--shadow)" }}>
-          {t("map.roomsShown", { n: rooms.length })}
-        </div>
-      </div>
     </div>
   );
 }

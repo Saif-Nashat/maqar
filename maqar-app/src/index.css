@@ -364,9 +364,9 @@
 .maqar-pin {
   position: relative;
   display: inline-flex; align-items: center; gap: 2px; white-space: nowrap;
-  /* Pins show the room name now, not the price, so the label is variable-length and much
-     longer. Cap it and ellipsis rather than letting pins sprawl across the map. */
-  max-width: 150px; overflow: hidden; text-overflow: ellipsis;
+  /* Pins carry a shortened room name. The label is already truncated in JS at a word
+     boundary; this is the belt-and-braces cap for an unusually long single word. */
+  max-width: 126px; overflow: hidden; text-overflow: ellipsis;
   padding: 5px 10px; border-radius: 999px;
   background: linear-gradient(150deg, #3A281F, #241812); color: #FBF7F0;
   font: 700 13px/1 'Inter', sans-serif;
