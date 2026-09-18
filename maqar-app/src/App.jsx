@@ -11,6 +11,7 @@ import UserDash from "./screens/UserDash.jsx";
 import HostDash from "./screens/HostDash.jsx";
 import HostListRoom from "./screens/HostListRoom.jsx";
 import Messages from "./screens/Messages.jsx";
+import Pay from "./screens/Pay.jsx";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -35,6 +36,7 @@ export default function App() {
           <Route path="/host/new" element={<HostListRoom />} />
           <Route path="/messages" element={<Messages />} />
           <Route path="/messages/:roomId" element={<Messages />} />
+          <Route path="/pay/:bookingId" element={<Pay />} />
           <Route path="*" element={<Home />} />
         </Routes>
       </main>

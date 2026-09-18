@@ -220,6 +220,20 @@ const EN = {
   "hd.revenue7": "Revenue · last 7 days", "hd.occByHour": "Occupancy by hour", "hd.today2": "Today",
   // ---- install ----
   "pwa.install": "Install app",
+  // ---- payment screen ----
+  "pay.title": "Pay to confirm",
+  "pay.sub": "{host} accepted your request. Pay the full amount to confirm and get your arrival code.",
+  "pay.deadline": "Pay before {time} or the room is released.",
+  "pay.card": "Card number", "pay.exp": "Expiry", "pay.cvc": "CVC", "pay.name": "Name on card",
+  "pay.payNow": "Pay {amount} JOD",
+  "pay.refundNote": "Free cancellation until 24 hours before the start. After that, 50% is refunded. Nothing is refunded once the session begins.",
+  "pay.confirmed": "Booking confirmed",
+  "pay.codeBody": "Show this code at the door. The host types it in to check you in.",
+  "pay.err.card_declined": "That card was declined. Try another.",
+  "pay.err.network_error": "We couldn't reach the payment provider. Try again.",
+  "pay.err.invalid_card": "Check the card number.",
+  "pay.err.invalid_amount": "Something is wrong with this booking's amount.",
+  "pay.notPayable": "This booking isn't awaiting payment.",
 };
 
 const AR = {
@@ -428,6 +442,20 @@ const AR = {
   "hd.revenue7": "الإيراد · آخر ٧ أيام", "hd.occByHour": "الإشغال حسب الساعة", "hd.today2": "اليوم",
   // ---- install ----
   "pwa.install": "تثبيت التطبيق",
+  // ---- payment screen ----
+  "pay.title": "ادفع للتأكيد",
+  "pay.sub": "قَبِل {host} طلبك. ادفع المبلغ كاملاً للتأكيد والحصول على رمز الدخول.",
+  "pay.deadline": "ادفع قبل {time} وإلا تم تحرير الغرفة.",
+  "pay.card": "رقم البطاقة", "pay.exp": "تاريخ الانتهاء", "pay.cvc": "الرمز السري", "pay.name": "الاسم على البطاقة",
+  "pay.payNow": "ادفع {amount} د.أ",
+  "pay.refundNote": "إلغاء مجاني حتى 24 ساعة قبل الموعد. بعدها يُسترد 50%. ولا يُسترد شيء بعد بدء الجلسة.",
+  "pay.confirmed": "تم تأكيد الحجز",
+  "pay.codeBody": "اعرض هذا الرمز عند الباب. يُدخله المضيف لتسجيل وصولك.",
+  "pay.err.card_declined": "تم رفض البطاقة. جرّب بطاقة أخرى.",
+  "pay.err.network_error": "تعذّر الوصول إلى مزوّد الدفع. حاول مجدداً.",
+  "pay.err.invalid_card": "تحقق من رقم البطاقة.",
+  "pay.err.invalid_amount": "هناك مشكلة في مبلغ هذا الحجز.",
+  "pay.notPayable": "هذا الحجز ليس بانتظار الدفع.",
 };
 
 const DICTS = { en: EN, ar: AR };
