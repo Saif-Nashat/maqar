@@ -68,7 +68,6 @@ describe("holdsSlot", () => {
   });
 });
 
-const HOUR = 3600 * 1000;
 const at = (iso) => new Date(iso);
 
 describe("refundFraction", () => {
