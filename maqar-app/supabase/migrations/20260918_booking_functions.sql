@@ -135,16 +135,16 @@ language plpgsql security definer set search_path = public as $$
 declare v_booking public.bookings; v_is_guest boolean; v_is_host boolean;
         v_fraction numeric; v_refund numeric; v_remaining interval;
 begin
-  select b.* into v_booking from bookings b
-   where b.id = p_booking_id;
+  select b.* into v_booking from bookings b where b.id = p_booking_id;
   if not found then raise exception 'Not your booking'; end if;
 
   select (b.guest_id = auth.uid()), (r.host_id = auth.uid())
     into v_is_guest, v_is_host
     from bookings b join rooms r on r.id = b.room_id
    where b.id = p_booking_id;
-
-  if not (v_is_guest or v_is_host) then raise exception 'Not your booking'; end if;
+  if not found or not (coalesce(v_is_guest, false) or coalesce(v_is_host, false)) then
+    raise exception 'Not your booking';
+  end if;
   if v_booking.status not in ('Requested','Approved','Confirmed') then
     raise exception 'Cannot cancel a booking that is %', v_booking.status;
   end if;
