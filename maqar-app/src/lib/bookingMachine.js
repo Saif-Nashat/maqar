@@ -57,3 +57,44 @@ export function allowedTransitions(from, actor) {
   if (isTerminal(from)) return [];
   return TRANSITIONS.filter((t) => t.from === from && t.actor === actor).map((t) => t.to);
 }
+
+const HOUR_MS = 3600 * 1000;
+
+export const COMMISSION_RATE = 0.2;
+export const REFUND_POLICY = { fullRefundHours: 24, partialFraction: 0.5 };
+export const MIN_LEAD_MS = 1 * HOUR_MS;
+const PAYMENT_WINDOW_MS = 2 * HOUR_MS;
+const PAYMENT_CUTOFF_BEFORE_START_MS = 30 * 60 * 1000;
+
+const ms = (d) => (d instanceof Date ? d.getTime() : new Date(d).getTime());
+const round3 = (n) => Math.round(n * 1000) / 1000;
+
+/** 1 when cancelling early, the partial fraction inside the window, 0 once started. */
+export function refundFraction(startsAt, now, policy = REFUND_POLICY) {
+  const remaining = ms(startsAt) - ms(now);
+  if (remaining <= 0) return 0;
+  if (remaining > policy.fullRefundHours * HOUR_MS) return 1;
+  return policy.partialFraction;
+}
+
+export function refundAmount(total, startsAt, now, policy = REFUND_POLICY) {
+  return round3(total * refundFraction(startsAt, now, policy));
+}
+
+/** Two hours to pay, but never later than 30 minutes before the session starts. */
+export function paymentDeadline(approvedAt, startsAt) {
+  return new Date(Math.min(ms(approvedAt) + PAYMENT_WINDOW_MS, ms(startsAt) - PAYMENT_CUTOFF_BEFORE_START_MS));
+}
+
+export function canRequestAt(startsAt, now) {
+  return ms(startsAt) - ms(now) >= MIN_LEAD_MS;
+}
+
+/** Half-open [start, end): a booking may begin exactly when another ends. */
+export function overlaps(aStart, aEnd, bStart, bEnd) {
+  return ms(aStart) < ms(bEnd) && ms(bStart) < ms(aEnd);
+}
+
+export function bookingTotal(pricePerHour, startsAt, endsAt) {
+  return round3(pricePerHour * ((ms(endsAt) - ms(startsAt)) / HOUR_MS));
+}
