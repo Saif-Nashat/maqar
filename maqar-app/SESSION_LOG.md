@@ -1,6 +1,6 @@
 # Maqar — Session Log & Roadmap
 
-_Last updated: 2026-06-14_
+_Last updated: 2026-09-17_
 
 This file logs what was built in this session and what's left for the future. Treat it as the
 single source of truth for picking the project back up.
@@ -63,10 +63,27 @@ Roughly in order:
 
 ## 4. Current status
 
+### Deployed — LIVE and public
+- **Production URL: <https://maqar-one.vercel.app/>** (Vercel, auto-deploys from `main`).
+- Repo: <https://github.com/Saif-Nashat/maqar>
+- Verified 2026-09-17 that the deployed bundle built in **live mode** — `VITE_SUPABASE_URL` and
+  `VITE_SUPABASE_ANON_KEY` are inlined in `/assets/index-*.js`, so `isSupabaseConfigured` is `true`
+  in production and the site reads real Postgres (public `rooms` read returns 200 + rows).
+- Bundle scanned: **no** `service_role` / `sb_secret` / raw JWT present — only the `sb_publishable_…`
+  key, which is safe by design.
+
+> **Gotcha that bit us once already:** Vite inlines `VITE_*` at **build** time, not runtime. Adding
+> or changing env vars in the Vercel dashboard does nothing to existing deployments — you must
+> **redeploy** for new values to be baked into the bundle. A build that ran without the vars ships a
+> permanently demo-mode bundle that looks completely healthy.
+
 ### Backend — LIVE and connected
 - Project ref: `fdsbwmpyzuyclrnsitux` · URL: `https://fdsbwmpyzuyclrnsitux.supabase.co`
 - Keys live in `maqar-app/.env.local` (publishable key — safe for frontend; RLS protects data).
 - Schema applied from `supabase/schema.sql` (tables + row-level security + sign-up trigger + 6 seed rooms).
+- **Free-tier projects auto-pause after ~7 days idle** (status goes `INACTIVE`). This happened between
+  2026-06-14 and 2026-09-13; restored 2026-09-17, now `ACTIVE_HEALTHY`. If the live site suddenly
+  can't reach the backend, check the project status before debugging anything in the app.
 
 ### Verified live (via API, RLS-enforced) ✅
 - Rooms public read · Auth sign-up · **profile trigger** (account type written to DB)
@@ -125,18 +142,28 @@ Key patterns to know:
 
 ## 7. TODO / next steps (future)
 
-### Immediate — finish going fully live (≈2 min, in Supabase dashboard)
-- [ ] **Realtime chat**: run the `do $$ … alter publication supabase_realtime add table messages … $$;`
-      snippet at the bottom of `supabase/schema.sql`. (Chat already works in-session without it.)
-- [ ] **Photo uploads**: Storage → New bucket → name **`room-photos`** → **Public**.
-      (Sample images already work without it.)
-- [ ] **Cleanup test data**: delete the **"Acceptance Test Room"** row (Table Editor → rooms) and the
-      `maqar.*@gmail.com` test users created during verification.
+### Immediate — finish going fully live
+- [x] **Realtime chat** — `messages` added to the `supabase_realtime` publication (2026-09-17),
+      confirmed present in `pg_publication_tables`.
+- [x] **Photo uploads** — storage bucket `room-photos` exists and is **public**.
+- [x] **Cleanup test data** — done 2026-09-18. Removed the "Acceptance Test Room"
+      (`52f99b83-…`) and the 4 `maqar.*@gmail.com` verification logins. Verified after:
+      **6 rooms · 0 bookings · 1 profile · 1 auth user**, no orphaned rows.
+      - The one surviving account, `demo@maqar.app` ("Saif Ibrahim", `31be9b5c-…`), is the
+        owner's real account — **not** a verification user, despite an earlier note here
+        implying all 5 profiles were test data. Keep it.
+      - Worth remembering: the test booking was already gone before the room was deleted.
+        Two cascade paths pointed at it (`bookings.room_id → rooms` and
+        `bookings.guest_id → profiles`), and deleting the guest's auth user tripped the
+        second one first. Check what a cascade has *already* taken before assuming your
+        own delete is what removed a row.
 
-### Deploy the public demo (≈10 min) — see `SETUP.md`
-- [ ] Push `maqar-app` to a GitHub repo.
-- [ ] Import on Vercel (Vite preset), add the two `VITE_SUPABASE_*` env vars, deploy.
-- [ ] In Supabase → Auth → URL Configuration, add the Vercel URL to the allow-list.
+### Deploy the public demo — DONE
+- [x] Push `maqar-app` to a GitHub repo — <https://github.com/Saif-Nashat/maqar>
+- [x] Import on Vercel (Vite preset), add the two `VITE_SUPABASE_*` env vars, deploy.
+- [x] In Supabase → Auth → URL Configuration, add the Vercel URL to the allow-list.
+      (Note: not yet load-bearing — `mailer_autoconfirm` is still `true`, so no confirmation
+      redirect happens. It starts mattering the moment email confirmation is turned back on.)
 
 ### Product / hardening roadmap
 - [ ] **Phone OTP auth** (better for Jordan than email) — enable Phone provider + an SMS provider (Twilio).
@@ -161,6 +188,8 @@ Key patterns to know:
 
 ## 8. One-line status
 
-**Maqar is out of prototype phase: a polished, bilingual, dark-mode React app on a live Supabase
-backend, with the full host→guest booking loop verified end-to-end. Remaining work is 2 dashboard
-toggles, a deploy, and a product-hardening roadmap.**
+**Maqar is deployed, public, and clean at <https://maqar-one.vercel.app/> — a polished,
+bilingual, dark-mode React app on a live Supabase backend (verified live-mode, RLS-enforced, no
+secrets in the bundle, realtime chat enabled, test data purged), with the full host→guest booking
+loop working end-to-end. Everything on the "go live" checklist is done; what remains is the
+product-hardening roadmap.**
