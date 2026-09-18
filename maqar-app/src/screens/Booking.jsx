@@ -9,6 +9,12 @@ import { canRequestAt, overlaps } from "../lib/bookingMachine.js";
 const SLOTS = ["09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "14:00", "14:30", "15:00", "15:30"];
 const DURS = [1, 1.5, 2, 3, 4];
 
+const ERR_KEYS = {
+  tooSoon: "booking.tooSoon",
+  invalidRange: "booking.noPastDates",
+  slotTaken: "booking.slotTaken",
+};
+
 export default function Booking() {
   const { id } = useParams();
   const nav = useNavigate();
@@ -17,7 +23,8 @@ export default function Booking() {
   const { t, lang } = useT();
   const room = getRoom(id);
   const [step, setStep] = useState(1);
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  const todayIso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const [date, setDate] = useState(todayIso);
   const [ranges, setRanges] = useState([]);
 
@@ -63,9 +70,11 @@ export default function Booking() {
       const endsAt = slotEnd(booking.slot).toISOString();
       const res = await requestBooking({ room, startsAt, endsAt });
       if (!res.ok) {
-        toast(res.error || t("booking.slotTaken"));
+        toast(t(ERR_KEYS[res.error] || "booking.slotTaken"));
         setBooking((b) => ({ ...b, slot: null }));
         setStep(1);
+        const fresh = await bookedRanges(room.id);
+        setRanges(fresh);
         window.scrollTo(0, 0);
         return;
       }

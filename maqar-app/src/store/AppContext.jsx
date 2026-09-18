@@ -16,7 +16,7 @@ export const useApp = () => useContext(AppContext);
 // "all" means no location filter. It is keyed off the English loc so the value stays
 // stable when the interface language changes.
 const initialFilters = { type: "all", feats: [], minCap: 1, sort: "rec", area: "all" };
-const initialBooking = { slot: null, dur: 1, proof: false };
+const initialBooking = { slot: null, dur: 1 };
 
 export function AppProvider({ children }) {
   // ----- auth / account (live via Supabase, or mock via localStorage) -----
