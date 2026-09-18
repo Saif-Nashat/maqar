@@ -10,14 +10,20 @@ declare
   v_room uuid := gen_random_uuid();
   v_base timestamptz := date_trunc('hour', now()) + interval '2 days';
 begin
-  -- Insert into auth.users first, before profiles (profiles.id is FK to auth.users.id)
-  insert into auth.users (id, email, instance_id)
-  values (v_host, 'test-host@example.com', '00000000-0000-0000-0000-000000000000'::uuid);
-  insert into auth.users (id, email, instance_id)
-  values (v_guest, 'test-guest@example.com', '00000000-0000-0000-0000-000000000000'::uuid);
+  -- Insert into auth.users with metadata; the on_auth_user_created trigger will create profiles
+  insert into auth.users (id, email, instance_id, raw_user_meta_data)
+  values (v_host, 'test-host@example.com', '00000000-0000-0000-0000-000000000000'::uuid,
+          '{"type":"host","name":"T Host"}'::jsonb);
+  insert into auth.users (id, email, instance_id, raw_user_meta_data)
+  values (v_guest, 'test-guest@example.com', '00000000-0000-0000-0000-000000000000'::uuid,
+          '{"type":"user","name":"T Guest"}'::jsonb);
 
-  insert into public.profiles (id, type, name) values (v_host, 'host', 'T Host');
-  insert into public.profiles (id, type, name) values (v_guest, 'user', 'T Guest');
+  -- Verify the signup trigger created profiles with the right account type
+  if (select type from public.profiles where id = v_host) is distinct from 'host'
+     or (select type from public.profiles where id = v_guest) is distinct from 'user' then
+    raise exception 'FAIL: the signup trigger did not create profiles with the right type';
+  end if;
+  raise notice 'PASS: signup trigger created both profiles with the right account type';
   insert into public.rooms (id, host_id, title, loc, area, type, cap, price)
   values (v_room, v_host, 'T Room', 'Abdoun, Amman', 'Abdoun', 'Meeting', 4, 10);
 
