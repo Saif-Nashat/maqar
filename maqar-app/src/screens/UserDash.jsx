@@ -153,35 +153,46 @@ function BookingItem({ room, when, sk, timer, timerLbl, code, cancelled, onLate,
   const stCls = sk === "Confirmed" ? "st-confirmed" : sk === "Upcoming" ? "st-upcoming" : "st-pending";
   const showCode = code && sk !== "PendingHost";
   return (
-    <div className="surface p-4 mb-[14px] flex gap-[15px] items-center" style={{ animation: "biIn .5s cubic-bezier(.22,1,.36,1) both", opacity: cancelled ? 0.4 : 1 }}>
-      <img src={room.imgs[0]} alt="" className="w-[84px] h-16 object-cover rounded-[10px]" />
-      <div className="flex-1">
-        <h4 className="font-sans text-[15px] font-bold">{rt.title}</h4>
-        <div className="text-[13px] mt-[2px]" style={{ color: "var(--muted)" }}>{rt.loc} · {when}</div>
-        <span className={`status ${cancelled ? "st-pending" : stCls} mt-[6px]`}>{cancelled ? t("st.Cancelled") : t(`st.${sk}`)}</span>
-        {!cancelled && showCode && (
-          <div className="flex items-center gap-[6px] mt-[9px] flex-wrap">
-            <span className="eyebrow" style={{ marginInlineEnd: 2 }}>{t("ud.arrivalCode")}</span><CodeDigits code={code} />
+    // Below sm this stacks into two rows. It used to be one rigid row of four items whose
+    // buttons carry whitespace-nowrap, so at 375px "Running late" and "Cancel" were sliced
+    // off the right edge and unreachable. Desktop layout is unchanged.
+    <div className="surface p-4 mb-[14px] flex flex-col sm:flex-row gap-[12px] sm:gap-[15px] sm:items-center"
+      style={{ animation: "biIn .5s cubic-bezier(.22,1,.36,1) both", opacity: cancelled ? 0.4 : 1 }}>
+      <div className="flex gap-[12px] sm:gap-[15px] items-center flex-1 min-w-0">
+        <img src={room.imgs[0]} alt="" className="w-[72px] h-[56px] sm:w-[84px] sm:h-16 object-cover rounded-[10px] shrink-0" />
+        <div className="flex-1 min-w-0">
+          <h4 className="font-sans text-[15px] font-bold">{rt.title}</h4>
+          <div className="text-[13px] mt-[2px]" style={{ color: "var(--muted)" }}>{rt.loc} · {when}</div>
+          <span className={`status ${cancelled ? "st-pending" : stCls} mt-[6px]`}>{cancelled ? t("st.Cancelled") : t(`st.${sk}`)}</span>
+          {!cancelled && showCode && (
+            <div className="flex items-center gap-[6px] mt-[9px] flex-wrap">
+              <span className="eyebrow" style={{ marginInlineEnd: 2 }}>{t("ud.arrivalCode")}</span><CodeDigits code={code} />
+            </div>
+          )}
+          {!cancelled && sk === "PendingHost" && (
+            <div className="mt-[9px]"><span className="text-[12px] italic" style={{ color: "var(--muted)" }}>{t("ud.codeAfterApprove")}</span></div>
+          )}
+        </div>
+      </div>
+
+      {/* sm:contents dissolves this wrapper on desktop, so the timer and the buttons become
+          direct children of the row again and desktop renders exactly as before. */}
+      <div className="flex items-center justify-between gap-[12px] sm:contents">
+        {timer !== "—" && !cancelled && (
+          <div className="text-center shrink-0">
+            <div className="num font-serif text-[22px] font-semibold whitespace-nowrap" style={{ color: "var(--espresso)" }}>{timer}</div>
+            <div className="text-[11px] uppercase tracking-[.4px]" style={{ color: "var(--muted)" }}>{timerLbl}</div>
           </div>
         )}
-        {!cancelled && sk === "PendingHost" && (
-          <div className="mt-[9px]"><span className="text-[12px] italic" style={{ color: "var(--muted)" }}>{t("ud.codeAfterApprove")}</span></div>
+        {!cancelled && (
+          <div className="flex sm:flex-col gap-[6px] shrink-0">
+            {sk === "Confirmed" && (
+              <button onClick={onLate} className="px-[13px] py-[7px] rounded-[9px] text-[12px] font-bold whitespace-nowrap" style={{ background: "rgba(192,134,59,.14)", color: "var(--warn)" }}>{t("ud.runningLate")}</button>
+            )}
+            <button onClick={onCancel} className="px-[13px] py-[7px] rounded-[9px] text-[12px] font-bold whitespace-nowrap" style={{ background: "var(--foam)", color: "var(--bad)", border: "1px solid var(--line)" }}>{t("ud.cancel")}</button>
+          </div>
         )}
       </div>
-      {timer !== "—" && !cancelled && (
-        <div className="text-center">
-          <div className="font-serif text-[22px] font-semibold" style={{ color: "var(--espresso)" }}>{timer}</div>
-          <div className="text-[11px] uppercase tracking-[.4px]" style={{ color: "var(--muted)" }}>{timerLbl}</div>
-        </div>
-      )}
-      {!cancelled && (
-        <div className="flex flex-col gap-[6px]">
-          {sk === "Confirmed" && (
-            <button onClick={onLate} className="px-[13px] py-[7px] rounded-[9px] text-[12px] font-bold whitespace-nowrap" style={{ background: "rgba(192,134,59,.14)", color: "var(--warn)" }}>{t("ud.runningLate")}</button>
-          )}
-          <button onClick={onCancel} className="px-[13px] py-[7px] rounded-[9px] text-[12px] font-bold whitespace-nowrap" style={{ background: "var(--foam)", color: "var(--bad)", border: "1px solid var(--line)" }}>{t("ud.cancel")}</button>
-        </div>
-      )}
     </div>
   );
 }

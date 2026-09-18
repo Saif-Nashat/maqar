@@ -18,8 +18,8 @@ const FAN = [
   { x: "320px", y: "46px", rot: "-2deg", z: 10 },
 ];
 
-export default function HeroGallery() {
-  const { rooms, loggedIn } = useApp();
+export default function HeroGallery({ onCta }) {
+  const { rooms } = useApp();
   const { t, lang } = useT();
   const nav = useNavigate();
 
@@ -57,11 +57,12 @@ export default function HeroGallery() {
         })}
       </div>
 
-      {!loggedIn && (
-        <div className="flex justify-center mt-[30px]">
-          <GetStartedButton key={lang} onClick={() => nav("/login")} />
-        </div>
-      )}
+      {/* Scrolls down to the room grid rather than sending people to sign-in. Browsing is
+          open to everyone, so the first step is looking at rooms, not making an account.
+          Shown to signed-in visitors too, since it is now a browse action. */}
+      <div className="flex justify-center mt-[30px]">
+        <GetStartedButton key={lang} onClick={onCta} />
+      </div>
     </section>
   );
 }

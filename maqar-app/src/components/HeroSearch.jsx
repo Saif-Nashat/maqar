@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, LayoutGrid, Users, MapPin, Star } from "lucide-react";
 import { useApp } from "../store/AppContext.jsx";
 import { useT } from "../i18n/index.jsx";
-import { roomText } from "../data/rooms.js";
+import { roomText, areaOf } from "../data/rooms.js";
 
 const TYPES = ["all", "Meeting", "Private", "Event"];
 const CAPS = [
@@ -21,6 +21,17 @@ export default function HeroSearch({ onSearch }) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
 
+  // Districts present in the current room set. Keyed by the English name so the selected
+  // value survives a language switch; the label is localised for display.
+  const areas = useMemo(() => {
+    const m = new Map();
+    rooms.forEach((r) => {
+      const key = areaOf(r, "en");
+      if (key && !m.has(key)) m.set(key, areaOf(r, lang) || key);
+    });
+    return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [rooms, lang]);
+
   const ql = q.trim().toLowerCase();
   const matches = ql
     ? rooms.filter((r) =>
@@ -36,18 +47,19 @@ export default function HeroSearch({ onSearch }) {
   }
 
   return (
-    <div className="surface p-[10px]" style={{ borderRadius: 18 }}>
+    <div className="surface p-[7px]" style={{ borderRadius: 16 }}>
       {/* autocomplete search */}
       <div className="relative mb-[8px]">
-        <div className="flex items-center gap-[10px] px-[14px] py-[11px] rounded-[14px]" style={{ background: "var(--foam)", border: "1px solid var(--line)" }}>
+        <div className="flex items-center gap-[10px] px-[13px] py-[8px] rounded-[12px]" style={{ background: "var(--foam)", border: "1px solid var(--line)" }}>
           <Search className="w-[18px] h-[18px] shrink-0" style={{ color: "var(--muted)" }} />
+          {/* 16px below sm so iOS Safari does not zoom the page on focus — see .field-input */}
           <input
             value={q}
             onChange={(e) => { setQ(e.target.value); setOpen(true); }}
             onFocus={() => setOpen(true)}
             onBlur={() => setTimeout(() => setOpen(false), 150)}
             placeholder={t("search.placeholder")}
-            className="bg-transparent outline-none w-full text-[15px] font-medium"
+            className="bg-transparent outline-none w-full text-[16px] sm:text-[15px] font-medium"
             style={{ color: "var(--ink)" }}
           />
         </div>
@@ -103,12 +115,19 @@ export default function HeroSearch({ onSearch }) {
 
         <Divider />
 
+        {/* This was a static <div> reading "Amman & nearby" — it looked like a control but
+            filtered nothing, and the filter state had no location key at all. It is now a
+            real select over the districts present in the room data. */}
         <Segment icon={<MapPin className="w-[18px] h-[18px]" />} label={t("search.where")}>
-          <div className="font-semibold text-[14px] whitespace-nowrap" style={{ color: "var(--espresso)" }}>{t("search.amman")}</div>
+          <select value={filters.area} onChange={(e) => setFilters((f) => ({ ...f, area: e.target.value }))}
+            className="bg-transparent font-semibold text-[14px] outline-none cursor-pointer w-full" style={{ color: "var(--espresso)" }}>
+            <option value="all">{t("search.amman")}</option>
+            {areas.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+          </select>
         </Segment>
 
         <button onClick={onSearch}
-          className="btn-primary rounded-[12px] px-[22px] py-[13px] text-[14px] flex items-center justify-center gap-[7px] shrink-0">
+          className="btn-primary rounded-[11px] px-[20px] py-[10px] text-[14px] flex items-center justify-center gap-[7px] shrink-0">
           <Search className="w-[16px] h-[16px]" /> {t("search.button")}
         </button>
       </div>
@@ -123,8 +142,8 @@ function Segment({ icon, label, children }) {
     // clipped "Any room" to "Any roor" and wrapped "Amman & nearby" onto two lines.
     // flex-auto (`flex: 1 1 auto`) sizes each segment from its content first, then
     // shares out what is left. Below `lg` the row stacks, so nothing needs to shrink.
-    <div className="flex items-center gap-[11px] px-[12px] py-[6px] flex-auto">
-      <span className="grid place-items-center w-[36px] h-[36px] rounded-[10px] shrink-0"
+    <div className="flex items-center gap-[9px] px-[10px] py-[3px] flex-auto">
+      <span className="grid place-items-center w-[31px] h-[31px] rounded-[9px] shrink-0"
         style={{ background: "var(--foam)", color: "var(--coffee)" }}>{icon}</span>
       <div className="min-w-0 flex-1">
         <div className="eyebrow mb-[1px]">{label}</div>

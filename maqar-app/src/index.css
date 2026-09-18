@@ -196,6 +196,13 @@
     .fan-card:first-child, .fan-card:last-child { display: none; }
   }
 
+  /* The filters row scrolls sideways; the page's 11px scrollbar is far too heavy for a
+     40px-tall strip, so give it a slim one of its own. */
+  .filters-row { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+  .filters-row::-webkit-scrollbar { height: 6px; }
+  .filters-row::-webkit-scrollbar-track { background: transparent; border: 0; }
+  .filters-row::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; border: 0; }
+
   /* ---- Surface tiers (see the token block for why) ---- */
   .surface-sunken {
     background: var(--surface-sunken);
@@ -284,9 +291,13 @@
   /* ---- Inputs ---- */
   .field-input {
     width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 11px;
-    background: var(--foam); color: var(--ink); font-size: 15px; font-family: inherit;
+    background: var(--foam); color: var(--ink); font-family: inherit;
+    /* 16px, not 15px: iOS Safari zooms the whole page in when a focused input is under
+       16px, and it does not zoom back out. Every field in the app was 15px. */
+    font-size: 16px;
     transition: border-color .25s var(--ease), box-shadow .25s var(--ease), background .25s;
   }
+  @media (min-width: 640px) { .field-input { font-size: 15px; } }
   .field-input:focus {
     outline: none; border-color: var(--gold); background: var(--surface);
     box-shadow: 0 0 0 3px rgba(184, 144, 95, .16), 0 1px 2px rgba(43, 29, 23, .05) inset;
@@ -353,6 +364,9 @@
 .maqar-pin {
   position: relative;
   display: inline-flex; align-items: center; gap: 2px; white-space: nowrap;
+  /* Pins show the room name now, not the price, so the label is variable-length and much
+     longer. Cap it and ellipsis rather than letting pins sprawl across the map. */
+  max-width: 150px; overflow: hidden; text-overflow: ellipsis;
   padding: 5px 10px; border-radius: 999px;
   background: linear-gradient(150deg, #3A281F, #241812); color: #FBF7F0;
   font: 700 13px/1 'Inter', sans-serif;

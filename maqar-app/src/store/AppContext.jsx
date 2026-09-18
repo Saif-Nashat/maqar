@@ -10,7 +10,10 @@ const live = isSupabaseConfigured;
 const AppContext = createContext(null);
 export const useApp = () => useContext(AppContext);
 
-const initialFilters = { type: "all", feats: [], minCap: 1, sort: "rec" };
+// `area` is the Amman district taken from a room's `loc` ("Abdoun, Amman" → "Abdoun").
+// "all" means no location filter. It is keyed off the English loc so the value stays
+// stable when the interface language changes.
+const initialFilters = { type: "all", feats: [], minCap: 1, sort: "rec", area: "all" };
 const initialBooking = { slot: null, dur: 1, proof: false };
 
 export function AppProvider({ children }) {

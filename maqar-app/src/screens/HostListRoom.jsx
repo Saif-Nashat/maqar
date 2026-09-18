@@ -136,10 +136,13 @@ function Stepper({ step, setStep, t }) {
         const active = n === step;
         return (
           <div key={key} className="flex items-center flex-1 min-w-fit">
+            {/* Tighter on phones: five steps at the desktop spacing need ~330px inside a
+                card that offers ~295px at 375px, so the fifth step was clipped off the
+                edge and the host could not see which step they were on. */}
             <button onClick={() => n < step && setStep(n)} disabled={n > step}
-              className="flex items-center gap-[9px] px-[10px] py-[7px] rounded-xl transition-colors"
+              className="flex items-center gap-[9px] px-[4px] sm:px-[10px] py-[7px] rounded-xl transition-colors"
               style={{ cursor: n < step ? "pointer" : active ? "default" : "not-allowed" }}>
-              <span className="w-[30px] h-[30px] rounded-full grid place-items-center transition-all shrink-0"
+              <span className="w-[26px] h-[26px] sm:w-[30px] sm:h-[30px] rounded-full grid place-items-center transition-all shrink-0"
                 style={active
                   ? { background: "linear-gradient(150deg,var(--fill-dark),var(--fill-mid))", color: "var(--cream)", boxShadow: "0 4px 12px rgba(43,29,23,.28)" }
                   : done
@@ -153,7 +156,7 @@ function Stepper({ step, setStep, t }) {
               </span>
             </button>
             {i < STEPS.length - 1 && (
-              <span className="flex-1 h-[2px] mx-1 rounded-full min-w-[12px]" style={{ background: done ? "var(--crema)" : "var(--line)" }} />
+              <span className="flex-1 h-[2px] mx-[2px] sm:mx-1 rounded-full min-w-[5px] sm:min-w-[12px]" style={{ background: done ? "var(--crema)" : "var(--line)" }} />
             )}
           </div>
         );

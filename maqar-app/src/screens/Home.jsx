@@ -4,6 +4,7 @@ import { useApp } from "../store/AppContext.jsx";
 import HeroGallery from "../components/HeroGallery.jsx";
 import { useT } from "../i18n/index.jsx";
 import { distanceKm } from "../lib/geo.js";
+import { areaOf } from "../data/rooms.js";
 import MapView from "../components/MapView.jsx";
 import Filters from "../components/Filters.jsx";
 import RoomCard from "../components/RoomCard.jsx";
@@ -13,6 +14,7 @@ function useFiltered(filters, all) {
   return useMemo(() => {
     let r = all.filter((rm) => {
       if (filters.type !== "all" && rm.type !== filters.type) return false;
+      if (filters.area !== "all" && areaOf(rm, "en") !== filters.area) return false;
       if (rm.cap < filters.minCap) return false;
       if (filters.feats.length && !filters.feats.every((f) => rm.feats.includes(f))) return false;
       return true;
@@ -87,7 +89,7 @@ export default function Home() {
             home.heroPre / heroEm / heroPost / heroSub are left in i18n so the previous
             copy can be restored without rewriting the dictionaries. */}
         <div className="relative z-[1] mb-[22px]">
-          <HeroGallery />
+          <HeroGallery onCta={scrollToResults} />
         </div>
 
         <div className="relative z-[1] mb-[18px]" style={{ animation: "riseIn .95s cubic-bezier(.22,1,.36,1) .3s both" }}>

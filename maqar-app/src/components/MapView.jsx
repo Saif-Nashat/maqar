@@ -25,12 +25,23 @@ const TILES = {
 };
 const ATTRIB = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
 
-function priceIcon(price, cur, active) {
+// Escape before interpolating: room titles are user-supplied once hosts can list rooms,
+// and this string goes into divIcon as raw HTML.
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// Pins carry the room name rather than the price — the name is what identifies a place on
+// a map; the price is already on every room card. Width is variable, so the icon is sized
+// from the label length and the CSS caps it with an ellipsis at 150px.
+function titleIcon(title, active) {
+  const w = Math.min(150, Math.max(54, String(title).length * 7 + 24));
   return L.divIcon({
     className: "maqar-pin-wrap",
-    html: `<div class="maqar-pin${active ? " active" : ""}">${price}<span>${cur}</span></div>`,
-    iconSize: [54, 32],
-    iconAnchor: [27, 34],
+    html: `<div class="maqar-pin${active ? " active" : ""}" title="${esc(title)}">${esc(title)}</div>`,
+    iconSize: [w, 32],
+    iconAnchor: [w / 2, 34],
     popupAnchor: [0, -34],
   });
 }
@@ -46,7 +57,6 @@ export default function MapView({ rooms, activeId, onHoverPin, userLoc }) {
   const { setCurrentRoom } = useApp();
   const { theme } = useSettings();
   const { t, lang } = useT();
-  const cur = lang === "ar" ? "د.أ" : "JOD";
   const perHr = lang === "ar" ? "د.أ/ساعة" : "JOD/hr";
 
   function openDetail(room) {
@@ -64,7 +74,7 @@ export default function MapView({ rooms, activeId, onHoverPin, userLoc }) {
         {rooms.map((r) => {
           const rt = roomText(r, lang);
           return (
-            <Marker key={r.id} position={[r.lat, r.lng]} icon={priceIcon(r.price, cur, activeId === r.id)}
+            <Marker key={r.id} position={[r.lat, r.lng]} icon={titleIcon(rt.title, activeId === r.id)}
               eventHandlers={{ mouseover: () => onHoverPin?.(r.id), mouseout: () => onHoverPin?.(null) }}>
               <Popup>
                 <div className="w-[200px] cursor-pointer" onClick={() => openDetail(r)}>

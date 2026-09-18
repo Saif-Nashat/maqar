@@ -23,6 +23,13 @@ export const RID = {
   r6: "00000000-0000-0000-0000-000000000006",
 };
 
+// "Abdoun, Amman" → "Abdoun"; "Jabal Amman" (no comma) → "Jabal Amman".
+// Handles the Arabic comma (،) as well as the Latin one.
+export function areaOf(room, lang = "en") {
+  const src = (lang === "ar" ? room?.loc_ar || room?.loc : room?.loc) || "";
+  return src.split(/[,،]/)[0].trim();
+}
+
 export const ROOMS = [
   {
     id: RID.r1, title: "The Crema Boardroom", type: "Meeting", loc: "Abdoun, Amman", cap: 8, price: 9, verified: true,

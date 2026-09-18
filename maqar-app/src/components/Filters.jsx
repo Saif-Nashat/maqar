@@ -18,47 +18,41 @@ export default function Filters() {
   const setSort = (sort) => setFilters((f) => ({ ...f, sort }));
 
   return (
-    <div className="flex gap-3 flex-wrap items-center mt-[22px] mb-[6px] p-[14px] rounded-r"
+    // One horizontally scrolling line instead of a wrapping block that grew to three rows
+    // on a phone. The stacked eyebrow labels are gone — the chips name themselves — which
+    // is what lets everything sit on a single row. `w-max` stops the inner row shrinking
+    // to the container, so the container is what scrolls.
+    <div className="mt-[22px] mb-[6px] p-[9px] rounded-r overflow-x-auto filters-row"
       style={{ background: "var(--foam)", border: "1px solid var(--line)" }}>
-      <div className="flex flex-col gap-1">
-        <span className="eyebrow">{t("filters.roomType")}</span>
-        <div className="flex gap-[6px] flex-wrap">
-          {TYPES.map((ty) => (
-            <button key={ty} className={`chip ${filters.type === ty ? "on" : ""}`} onClick={() => setType(ty)}>
-              {ty === "all" ? t("filters.all") : t(`type.${ty}`)}
-            </button>
-          ))}
-        </div>
-      </div>
+      <div className="flex items-center gap-[7px] w-max">
+        {TYPES.map((ty) => (
+          <button key={ty} className={`chip shrink-0 ${filters.type === ty ? "on" : ""}`} onClick={() => setType(ty)}>
+            {ty === "all" ? t("filters.all") : t(`type.${ty}`)}
+          </button>
+        ))}
 
-      <div className="flex flex-col gap-1">
-        <span className="eyebrow">{t("filters.features")}</span>
-        <div className="flex gap-[6px] flex-wrap">
-          {FEATURES.map((f) => (
-            <button key={f} className={`chip ${filters.feats.includes(f) ? "on" : ""}`} onClick={() => toggleFeat(f)}>
-              {t(`feat.${f}`)}
-            </button>
-          ))}
-        </div>
-      </div>
+        <Sep />
 
-      <div className="flex flex-col gap-1">
-        <span className="eyebrow">{t("filters.minCap")}</span>
-        <div className="flex items-center gap-[10px]">
-          <input type="range" min="1" max="20" value={filters.minCap}
-            onChange={(e) => setCap(+e.target.value)} className="w-[150px]" style={{ accentColor: "var(--coffee)" }} />
-          <span className="font-bold text-[14px] min-w-[60px]" style={{ color: "var(--coffee)" }}>
+        {FEATURES.map((f) => (
+          <button key={f} className={`chip shrink-0 ${filters.feats.includes(f) ? "on" : ""}`} onClick={() => toggleFeat(f)}>
+            {t(`feat.${f}`)}
+          </button>
+        ))}
+
+        <Sep />
+
+        <div className="flex items-center gap-[9px] shrink-0 ps-[2px]">
+          <input type="range" min="1" max="20" value={filters.minCap} aria-label={t("filters.minCap")}
+            onChange={(e) => setCap(+e.target.value)} className="w-[110px]" style={{ accentColor: "var(--coffee)" }} />
+          <span className="num font-bold text-[13px] whitespace-nowrap" style={{ color: "var(--coffee)" }}>
             {lang === "ar" ? `+${filters.minCap} أشخاص` : `${filters.minCap}+ people`}
           </span>
         </div>
-      </div>
 
-      <div className="flex-1" />
+        <Sep />
 
-      <div className="flex flex-col gap-1">
-        <span className="eyebrow">{t("filters.sortBy")}</span>
-        <select value={filters.sort} onChange={(e) => setSort(e.target.value)}
-          className="px-3 py-2 rounded-[10px] font-semibold cursor-pointer"
+        <select value={filters.sort} onChange={(e) => setSort(e.target.value)} aria-label={t("filters.sortBy")}
+          className="shrink-0 px-[11px] py-[7px] rounded-[10px] font-semibold text-[13px] cursor-pointer"
           style={{ border: "1px solid var(--line)", background: "var(--surface)", color: "var(--coffee)" }}>
           <option value="rec">{t("sort.rec")}</option>
           <option value="price-low">{t("sort.priceLow")}</option>
@@ -69,4 +63,8 @@ export default function Filters() {
       </div>
     </div>
   );
+}
+
+function Sep() {
+  return <span className="w-px h-[22px] shrink-0 mx-[3px]" style={{ background: "var(--line)" }} />;
 }
