@@ -28,6 +28,7 @@ each defect stops being reachable.
 |---|---|---|
 | Payment order | Request → host approves → guest pays | No money moves for a booking that never happens, so denials need no refund path |
 | Payment method | Card only. No cash, no CliQ, no split | Confirmation is automatic from the rail. Matches the report's own model: guest pays the listed price, commission comes off the host side after completion |
+| Commission rate | 20%, platform-wide | Top of the report's stated 10–20% range. Break-even falls from 731 to 549 bookings a month. The deck's "15% average" line needs correcting |
 | Guest cancellation | Tiered by notice period | >24h full refund, ≤24h 50%, after start nothing |
 | Admin role | Add now, build the UI later | Changing a CHECK constraint and every dependent RLS policy on live data is the expensive version |
 | Card rail | Stubbed behind an interface | No PSP exists yet. The state machine is real; the charge is simulated and a provider drops into one function later |
@@ -77,7 +78,7 @@ starts_at          timestamptz not null   -- replaces date + slot
 ends_at            timestamptz not null
 status             text not null          -- new CHECK, states above
 total               numeric(10,3) not null -- JOD, 3 dp (1000 fils)
-commission_rate     numeric(5,4) not null default 0.15
+commission_rate     numeric(5,4) not null default 0.20
 commission_amount   numeric(10,3)          -- set at Confirmed
 host_payout_amount  numeric(10,3)          -- set at Confirmed
 refund_policy       jsonb not null         -- snapshot, so policy changes cannot rewrite history
@@ -92,9 +93,13 @@ denial_reason       text                   -- required when Denied, shown to the
 `code` is **removed from this table** — see 4.2.
 
 Commission fields are stored even though payouts are out of scope. They cost nothing now and
-avoid a migration over live money later. The rate is a **single platform-wide default of 0.15**,
+avoid a migration over live money later. The rate is a **single platform-wide default of 0.20**,
 read from one place at `Confirmed` and snapshotted onto the booking. Per-room or per-host rates
 (the report's 10–20% range) are a later change that this shape already accommodates.
+
+20% is the top of the range the capstone report states and within what the deck claims, but the
+deck's "15% average commission" line is now wrong and needs updating. At 20% an average 14 JOD
+booking yields 2.80 JOD, which moves operational break-even from 731 bookings a month to 549.
 
 Overlap is enforced by the database, not the client:
 
