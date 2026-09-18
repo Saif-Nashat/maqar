@@ -14,7 +14,7 @@ rooms on a map, book them with a 50% CliQ deposit, and get a 4-digit arrival cod
 account types — **guests** (book rooms) and **hosts** (list & manage rooms). Coffee-shop visual
 identity (espresso/crema/cream palette, Fraunces + Inter type).
 
-Two implementations exist in `C:\Users\VICTUS\OneDrive\Desktop\Bootcamp`:
+Two implementations exist in this repo (checked out at `C:\dev\maqar` locally):
 
 - **`maqar-prototype.html`** — the original single-file vanilla HTML/CSS/JS prototype (kept for reference).
 - **`maqar-app/`** — the real app: **Vite + React + Tailwind v3**, now backed by **Supabase**. ← this is the project.
