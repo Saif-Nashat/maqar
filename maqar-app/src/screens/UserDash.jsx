@@ -1,51 +1,53 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, MapPin, KeyRound, GraduationCap, Wallet, Receipt, Heart } from "lucide-react";
-import { ROOMS, roomText } from "../data/rooms.js";
+import { Plus, MapPin, KeyRound, Wallet, Receipt, Heart } from "lucide-react";
+import { roomText } from "../data/rooms.js";
 import { useApp } from "../store/AppContext.jsx";
 import { useT } from "../i18n/index.jsx";
 import { useRequireAccount } from "../lib/guards.jsx";
+import { STATUS, refundAmount } from "../lib/bookingMachine.js";
 
 export default function UserDash() {
   const nav = useNavigate();
-  const { matchCode, openModal, toast, setCurrentRoom, resetBooking, favorites, payments, getRoom, bookings: liveBookings, updateBooking, isLiveBackend } = useApp();
+  const { openModal, toast, setCurrentRoom, resetBooking, favorites, payments, getRoom,
+          bookings, cancelBooking, arrivalCodeFor } = useApp();
   const { t, lang } = useT();
   const blocked = useRequireAccount("user");
   const [tab, setTab] = useState("bookings");
-  const [cancelled, setCancelled] = useState({});
 
   const jod = lang === "ar" ? "د.أ" : "JOD";
   const favRooms = favorites.map((id) => getRoom(id)).filter(Boolean);
-  const liveCode = matchCode || "4821";
-  const demoBookings = [
-    { key: "b1", room: ROOMS[0], when: `${t("when.today")} · 14:00–16:00`, sk: "Confirmed", timer: "1h 42m", timerLbl: t("ud.left"), code: liveCode },
-    { key: "b2", room: ROOMS[4], when: `${t("when.tomorrow")} · 10:00–11:30`, sk: "Upcoming", timer: t("when.startsIn", { h: 19 }), timerLbl: t("ud.untilStart"), code: "3607" },
-    { key: "b3", room: ROOMS[1], when: `${t("when.awaitingAt")} 16:30`, sk: "PendingHost", timer: "—", timerLbl: "", code: null },
-  ];
-  const bookings = isLiveBackend
-    ? liveBookings.map((b) => ({ key: b.id, id: b.id, room: b.room || getRoom(b.roomId), when: `${b.date} · ${b.slot} · ${b.dur}h`, sk: b.status, timer: "—", timerLbl: "", code: b.code })).filter((b) => b.room)
-    : demoBookings;
+
+  const rows = bookings
+    .map((b) => ({ ...b, room: b.room || getRoom(b.roomId) }))
+    .filter((b) => b.room);
+
+  const [codes, setCodes] = useState({});
+  const codeKey = rows.filter((b) => b.status === STATUS.CONFIRMED).map((b) => b.id).join(",");
+  useEffect(() => {
+    let alive = true;
+    Promise.all(rows.filter((b) => b.status === STATUS.CONFIRMED)
+      .map(async (b) => [b.id, await arrivalCodeFor(b.id)]))
+      .then((pairs) => { if (alive) setCodes(Object.fromEntries(pairs)); });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [codeKey, arrivalCodeFor]);
 
   function bookAgain(room) { setCurrentRoom(room); resetBooking(); nav(`/book/${room.id}`); }
-  function lateModal(title) {
+
+  function confirmCancel(b) {
+    const refund = b.status === STATUS.CONFIRMED ? refundAmount(b.total, b.startsAt, new Date()) : 0;
     openModal({
-      title: t("ud.lateTitle"), msg: t("ud.lateMsg", { title }),
-      cancelTxt: t("ud.nevermind"), okTxt: t("ud.notifyHost"), variant: "warn",
-      onConfirm: () => toast(t("ud.lateToast")),
-    });
-  }
-  function cancelBooking(key) {
-    openModal({
-      title: t("ud.cancelTitle"), msg: t("ud.cancelMsg"),
+      title: t("ud.cancelTitle"),
+      msg: `${t("ud.cancelMsg")}${b.status === STATUS.CONFIRMED ? " " + t("ud.refundNote", { amount: refund }) : ""}`,
       cancelTxt: t("ud.keepBooking"), okTxt: t("ud.cancelBooking"), variant: "bad",
-      onConfirm: () => { setCancelled((c) => ({ ...c, [key]: true })); toast(t("ud.cancelledToast")); },
-    });
-  }
-  function cancelLive(id) {
-    openModal({
-      title: t("ud.cancelTitle"), msg: t("ud.cancelMsg"),
-      cancelTxt: t("ud.keepBooking"), okTxt: t("ud.cancelBooking"), variant: "bad",
-      onConfirm: async () => { await updateBooking(id, { status: "Cancelled" }); toast(t("ud.cancelledToast")); },
+      onConfirm: async () => {
+        const res = await cancelBooking(b.id);
+        // cancelBooking's error is either a raw Postgres message (live) or a plain
+        // English sentence (demo) — never a translated code, so it must never be
+        // shown directly. Fall back to a generic, translated message instead.
+        toast(res.ok ? t("ud.cancelledToast") : t("ud.cancelFailed"));
+      },
     });
   }
 
@@ -63,17 +65,16 @@ export default function UserDash() {
         </button>
       </div>
 
-      <Tabbar tabs={[["bookings", t("ud.tabBookings")], ["favorites", t("ud.tabFavorites")], ["history", t("ud.tabHistory")], ["payments", t("ud.tabPayments")]]} tab={tab} setTab={setTab} />
+      <Tabbar tabs={[["bookings", t("ud.tabBookings")], ["favorites", t("ud.tabFavorites")], ["payments", t("ud.tabPayments")]]} tab={tab} setTab={setTab} />
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-[22px]">
         <div>
-          {tab === "bookings" && (bookings.length ? bookings.map((b) => (
-            <BookingItem key={b.key} {...b} room={b.room} t={t} lang={lang}
-              cancelled={isLiveBackend ? b.sk === "Cancelled" : cancelled[b.key]}
-              onLate={() => lateModal(roomText(b.room, lang).title)}
-              onCancel={() => (isLiveBackend ? cancelLive(b.id) : cancelBooking(b.key))} />
+          {tab === "bookings" && (rows.length ? rows.map((b) => (
+            <BookingItem key={b.id} b={b} code={codes[b.id]} t={t} lang={lang}
+              onPay={() => nav(`/pay/${b.id}`)}
+              onCancel={() => confirmCancel(b)} />
           )) : (
-            <div className="surface p-8 text-center text-[14px]" style={{ color: "var(--muted)" }}>{t("home.noMatch")}</div>
+            <div className="surface p-8 text-center text-[14px]" style={{ color: "var(--muted)" }}>{t("ud.noBookings")}</div>
           ))}
 
           {tab === "favorites" && (
@@ -90,36 +91,16 @@ export default function UserDash() {
           )}
 
           {tab === "payments" && <Payments payments={payments} jod={jod} t={t} lang={lang} getRoom={getRoom} />}
-
-          {tab === "history" && [
-            [ROOMS[2], `${t("when.today")} − ${lang === "ar" ? "ساعتان" : "2 hrs"}`, `36 ${jod}`],
-            [ROOMS[3], `${lang === "ar" ? "قبل أسبوع" : "May 15"} · ${lang === "ar" ? "ساعة ونصف" : "1.5 hrs"}`, `9 ${jod}`],
-            [ROOMS[4], `${lang === "ar" ? "قبل شهر" : "Apr 30"} · ${lang === "ar" ? "ساعة" : "1 hr"}`, `8 ${jod}`],
-          ].map(([r, when, paid], i) => <HistRow key={i} room={r} when={when} paid={paid} t={t} lang={lang} onAgain={() => bookAgain(r)} />)}
         </div>
 
         <div>
-          <div className="surface p-5 mb-[18px]">
+          <div className="surface p-5">
             <h3 className="font-sans text-[15px] font-bold mb-[14px]">{t("ud.arrivalCodesTitle")}</h3>
             <div className="flex gap-[11px] items-start">
               <div className="w-[38px] h-[38px] rounded-[10px] grid place-items-center shrink-0" style={{ background: "var(--fill-dark)", color: "var(--cream)" }}>
                 <KeyRound className="w-[18px] h-[18px]" />
               </div>
               <p className="text-[13px] leading-[1.55]" style={{ color: "var(--muted)" }}>{t("ud.arrivalCodesBody")}</p>
-            </div>
-          </div>
-
-          <div className="surface p-5">
-            <h3 className="font-sans text-[15px] font-bold mb-[14px]">{t("ud.studentPerks")}</h3>
-            <div className="flex items-center gap-[11px] p-[13px] rounded-xl" style={{ background: "var(--foam)", border: "1px solid var(--line)" }}>
-              <div className="w-10 h-10 rounded-[10px] grid place-items-center text-white" style={{ background: "var(--verify)" }}>
-                <GraduationCap className="w-5 h-5" />
-              </div>
-              <div className="flex-1">
-                <h4 className="font-sans text-[13px] font-bold">{t("ud.linkUni")}</h4>
-                <p className="text-[12px]" style={{ color: "var(--muted)" }}>{t("ud.unlock")}</p>
-              </div>
-              <button className="btn-primary px-[13px] py-[7px] rounded-[9px] text-[12px]" onClick={() => toast(t("ud.uniToast"))}>{t("ud.link")}</button>
             </div>
           </div>
         </div>
@@ -148,50 +129,78 @@ function CodeDigits({ code }) {
   return <span dir="ltr" className="inline-flex gap-[6px]">{code.split("").map((d, i) => <span key={i} className="code-digit w-[26px] h-[32px] rounded-[7px] text-[16px]">{d}</span>)}</span>;
 }
 
-function BookingItem({ room, when, sk, timer, timerLbl, code, cancelled, onLate, onCancel, t, lang }) {
-  const rt = roomText(room, lang);
-  const stCls = sk === "Confirmed" ? "st-confirmed" : sk === "Upcoming" ? "st-upcoming" : "st-pending";
-  const showCode = code && sk !== "PendingHost";
+// Requested/Approved read as "still moving" (warm/pending); Confirmed/Completed read as
+// settled (green). Denied/Expired/NoShow/Cancelled* have no dedicated chip class, so they
+// fall back to an inline "bad"-toned style below rather than borrowing an unrelated color.
+function statusCls(status) {
+  if (status === STATUS.CONFIRMED || status === STATUS.COMPLETED) return "st-confirmed";
+  if (status === STATUS.REQUESTED || status === STATUS.APPROVED) return "st-pending";
+  return null;
+}
+
+function formatWhen(startsAt, endsAt, lang) {
+  const locale = lang === "ar" ? "ar" : undefined;
+  const day = new Date(startsAt).toLocaleDateString(locale, { day: "numeric", month: "short" });
+  const start = new Date(startsAt).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
+  const end = new Date(endsAt).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
+  return `${day} · ${start}–${end}`;
+}
+
+function BookingItem({ b, code, t, lang, onPay, onCancel }) {
+  const rt = roomText(b.room, lang);
+  const when = formatWhen(b.startsAt, b.endsAt, lang);
+  const cls = statusCls(b.status);
+  const deadline = b.status === STATUS.APPROVED && b.paymentDeadline
+    ? new Date(b.paymentDeadline).toLocaleTimeString(lang === "ar" ? "ar" : undefined, { hour: "2-digit", minute: "2-digit" })
+    : null;
+  const canCancel = [STATUS.REQUESTED, STATUS.APPROVED, STATUS.CONFIRMED].includes(b.status);
+
   return (
-    // Below sm this stacks into two rows. It used to be one rigid row of four items whose
-    // buttons carry whitespace-nowrap, so at 375px "Running late" and "Cancel" were sliced
-    // off the right edge and unreachable. Desktop layout is unchanged.
+    // Below sm this stacks into two rows so the action buttons always have room, instead of
+    // one rigid row that used to slice buttons off the right edge at 375px. Desktop is a
+    // single row via sm:flex-row / sm:contents below.
     <div className="surface p-4 mb-[14px] flex flex-col sm:flex-row gap-[12px] sm:gap-[15px] sm:items-center"
-      style={{ animation: "biIn .5s cubic-bezier(.22,1,.36,1) both", opacity: cancelled ? 0.4 : 1 }}>
+      style={{ animation: "biIn .5s cubic-bezier(.22,1,.36,1) both" }}>
       <div className="flex gap-[12px] sm:gap-[15px] items-center flex-1 min-w-0">
-        <img src={room.imgs[0]} alt="" className="w-[72px] h-[56px] sm:w-[84px] sm:h-16 object-cover rounded-[10px] shrink-0" />
+        <img src={b.room.imgs[0]} alt="" className="w-[72px] h-[56px] sm:w-[84px] sm:h-16 object-cover rounded-[10px] shrink-0" />
         <div className="flex-1 min-w-0">
           <h4 className="font-sans text-[15px] font-bold">{rt.title}</h4>
           <div className="text-[13px] mt-[2px]" style={{ color: "var(--muted)" }}>{rt.loc} · {when}</div>
-          <span className={`status ${cancelled ? "st-pending" : stCls} mt-[6px]`}>{cancelled ? t("st.Cancelled") : t(`st.${sk}`)}</span>
-          {!cancelled && showCode && (
+          <span className={`status ${cls || ""} mt-[6px]`} style={cls ? undefined : { background: "var(--foam)", color: "var(--bad)" }}>
+            {t(`st.${b.status}`)}
+          </span>
+
+          {b.status === STATUS.DENIED && b.denialReason && (
+            <div className="text-[12px] italic mt-[6px]" style={{ color: "var(--bad)" }}>
+              {t("ud.deniedReason", { reason: b.denialReason })}
+            </div>
+          )}
+          {deadline && (
+            <div className="text-[12px] mt-[6px]" style={{ color: "var(--warn)" }}>{t("pay.deadline", { time: deadline })}</div>
+          )}
+          {b.status === STATUS.CONFIRMED && code && (
             <div className="flex items-center gap-[6px] mt-[9px] flex-wrap">
               <span className="eyebrow" style={{ marginInlineEnd: 2 }}>{t("ud.arrivalCode")}</span><CodeDigits code={code} />
             </div>
           )}
-          {!cancelled && sk === "PendingHost" && (
-            <div className="mt-[9px]"><span className="text-[12px] italic" style={{ color: "var(--muted)" }}>{t("ud.codeAfterApprove")}</span></div>
-          )}
         </div>
       </div>
 
-      {/* sm:contents dissolves this wrapper on desktop, so the timer and the buttons become
-          direct children of the row again and desktop renders exactly as before. */}
-      <div className="flex items-center justify-between gap-[12px] sm:contents">
-        {timer !== "—" && !cancelled && (
-          <div className="text-center shrink-0">
-            <div className="num font-serif text-[22px] font-semibold whitespace-nowrap" style={{ color: "var(--espresso)" }}>{timer}</div>
-            <div className="text-[11px] uppercase tracking-[.4px]" style={{ color: "var(--muted)" }}>{timerLbl}</div>
-          </div>
-        )}
-        {!cancelled && (
-          <div className="flex sm:flex-col gap-[6px] shrink-0">
-            {sk === "Confirmed" && (
-              <button onClick={onLate} className="px-[13px] py-[7px] rounded-[9px] text-[12px] font-bold whitespace-nowrap" style={{ background: "rgba(192,134,59,.14)", color: "var(--warn)" }}>{t("ud.runningLate")}</button>
-            )}
-            <button onClick={onCancel} className="px-[13px] py-[7px] rounded-[9px] text-[12px] font-bold whitespace-nowrap" style={{ background: "var(--foam)", color: "var(--bad)", border: "1px solid var(--line)" }}>{t("ud.cancel")}</button>
-          </div>
-        )}
+      {/* sm:contents dissolves this wrapper on desktop, so the buttons become direct
+          children of the row again and stack vertically via sm:flex-col below. */}
+      <div className="flex items-center justify-end gap-[12px] sm:contents">
+        <div className="flex sm:flex-col gap-[6px] shrink-0">
+          {b.status === STATUS.APPROVED && (
+            <button onClick={onPay}
+              className="px-[13px] py-[7px] rounded-[9px] text-[12px] font-bold text-white whitespace-nowrap"
+              style={{ background: "var(--good)" }}>{t("ud.payNow")}</button>
+          )}
+          {canCancel && (
+            <button onClick={onCancel}
+              className="px-[13px] py-[7px] rounded-[9px] text-[12px] font-bold whitespace-nowrap"
+              style={{ background: "var(--foam)", color: "var(--bad)", border: "1px solid var(--line)" }}>{t("ud.cancel")}</button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -211,25 +220,6 @@ function FavCard({ room, onBook, onOpen, t, lang, jod }) {
         <div className="flex items-center gap-[5px] text-[13px]" style={{ color: "var(--muted)" }}><MapPin className="w-[14px] h-[14px]" /> {rt.loc}</div>
         <button className="btn-primary py-[10px] rounded-[10px] text-[13px]" onClick={onBook}>{t("common.bookNow")}</button>
       </div>
-    </div>
-  );
-}
-
-function HistRow({ room, when, paid, onAgain, t, lang }) {
-  const rt = roomText(room, lang);
-  return (
-    <div className="surface p-4 mb-[14px] flex gap-[15px] items-center">
-      <img src={room.imgs[0]} alt="" className="w-[84px] h-16 object-cover rounded-[10px]" />
-      <div className="flex-1">
-        <h4 className="font-sans text-[15px] font-bold">{rt.title}</h4>
-        <div className="text-[13px] mt-[2px]" style={{ color: "var(--muted)" }}>{rt.loc} · {when}</div>
-        <span className="status st-confirmed mt-[6px]">{t("st.Completed")}</span>
-      </div>
-      <div className="text-center">
-        <div className="font-serif text-[22px] font-semibold" style={{ color: "var(--espresso)" }}>{paid}</div>
-        <div className="text-[11px] uppercase tracking-[.4px]" style={{ color: "var(--muted)" }}>{t("ud.paid")}</div>
-      </div>
-      <button onClick={onAgain} className="px-[13px] py-[7px] rounded-[9px] text-[12px] font-bold whitespace-nowrap" style={{ background: "rgba(192,134,59,.14)", color: "var(--warn)" }}>{t("ud.bookAgain")}</button>
     </div>
   );
 }
