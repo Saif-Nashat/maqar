@@ -158,7 +158,7 @@ function BrandPanel({ rooms, lang, t }) {
                 border: "4px solid rgba(251,247,240,.12)",
               }}>
               <img src={r.imgs[0]} alt="" className="w-full h-[104px] object-cover" />
-              <span className="absolute bottom-[8px] inset-inline-start-[10px] text-[12px] font-semibold px-[9px] py-[3px] rounded-full"
+              <span className="absolute bottom-[8px] start-[10px] text-[12px] font-semibold px-[9px] py-[3px] rounded-full"
                 style={{ background: "rgba(36,24,18,.72)", color: "var(--cream)", backdropFilter: "blur(6px)" }}>
                 {rt.loc}
               </span>
@@ -219,7 +219,7 @@ function PwField({ label, value, onChange, placeholder, show, setShow, extra }) 
           placeholder={placeholder} className="field-input pe-[42px]" dir="ltr" />
         <button type="button" onClick={() => setShow(!show)} tabIndex={-1}
           aria-label={show ? "Hide password" : "Show password"}
-          className="absolute inset-inline-end-[12px] top-1/2 -translate-y-1/2" style={{ color: "var(--muted)" }}>
+          className="absolute end-[12px] top-1/2 -translate-y-1/2" style={{ color: "var(--muted)" }}>
           {show ? <EyeOff className="w-[17px] h-[17px]" /> : <Eye className="w-[17px] h-[17px]" />}
         </button>
       </div>
