@@ -1,9 +1,11 @@
 import { createContext, useContext, useState, useRef, useCallback, useEffect } from "react";
 import { usePersistedState } from "./persist.js";
-import { SEED_REVIEWS, SEED_TAKEN, SEED_THREADS, SEED_PAYMENTS } from "../data/seed.js";
+import { SEED_REVIEWS, SEED_THREADS, SEED_PAYMENTS } from "../data/seed.js";
 import { ROOMS, mapRoomRow } from "../data/rooms.js";
 import { supabase, isSupabaseConfigured } from "../lib/supabase.js";
 import * as db from "../services/db.js";
+import { STATUS, ACTOR, canTransition, paymentDeadline, refundAmount, bookingTotal, overlaps } from "../lib/bookingMachine.js";
+import * as rail from "../services/paymentRail.js";
 
 const live = isSupabaseConfigured;
 
@@ -48,7 +50,6 @@ export function AppProvider({ children }) {
   const [myListings, setMyListings] = usePersistedState("maqar-listings", []);
   const [favorites, setFavorites] = usePersistedState("maqar-favorites", []);
   const [reviews, setReviews] = usePersistedState("maqar-reviews", SEED_REVIEWS);
-  const [taken, setTaken] = usePersistedState("maqar-taken", SEED_TAKEN);
   const [threads, setThreads] = usePersistedState("maqar-threads", SEED_THREADS);
   const [payments, setPayments] = usePersistedState("maqar-payments", SEED_PAYMENTS);
   const [bookings, setBookings] = useState([]); // live-only; demo dashboards use their own fixtures
@@ -196,40 +197,129 @@ export function AppProvider({ children }) {
     }
   }, [account, setReviews]);
 
-  // ----- availability (live → derived from real bookings; demo → local store) -----
-  const takenFor = useCallback((roomId, date) => {
-    if (live) return bookings.filter((b) => String(b.roomId) === String(roomId) && b.date === date && ["PendingHost", "Confirmed", "Upcoming"].includes(b.status)).map((b) => b.slot);
-    return taken[`${roomId}|${date}`] || [];
-  }, [taken, bookings]);
-  const takeSlot = useCallback((roomId, date, slot) => {
-    setTaken((tk) => {
-      const key = `${roomId}|${date}`;
-      const cur = tk[key] || [];
-      return cur.includes(slot) ? tk : { ...tk, [key]: [...cur, slot] };
-    });
-  }, [setTaken]);
+  // ----- bookings -----
+  // Live mode calls RPCs; demo mode runs the same rules from bookingMachine
+  // against a persisted local list. The rules live in one file so the two
+  // cannot drift.
+  const [demoBookings, setDemoBookings] = usePersistedState("maqar-bookings", []);
+  const allBookings = live ? bookings : demoBookings;
 
-  // ----- bookings (live) -----
-  const submitBooking = useCallback(async ({ room, date, slot, dur, code, total }) => {
+  const bookedRanges = useCallback(async (roomId) => {
+    if (live) {
+      const from = new Date().toISOString();
+      const to = new Date(Date.now() + 90 * 864e5).toISOString();
+      return db.bookedRangesDb(roomId, from, to);
+    }
+    return demoBookings
+      .filter((b) => String(b.roomId) === String(roomId) && ["Requested", "Approved", "Confirmed"].includes(b.status))
+      .map((b) => ({ startsAt: b.startsAt, endsAt: b.endsAt }));
+  }, [demoBookings]);
+
+  const requestBooking = useCallback(async ({ room, startsAt, endsAt }) => {
     if (live && account?.id) {
-      const { error } = await db.createBookingDb({ roomId: room.id, guestId: account.id, date, slot, dur, status: "PendingHost", code, total });
+      const { data, error } = await db.requestBookingDb({ roomId: room.id, startsAt, endsAt });
       if (error) return { ok: false, error: error.message };
       setBookings(await db.fetchBookings());
-      await db.addPaymentDb({ userId: account.id, roomId: room.id, label: "Deposit (50%)", amount: +(total / 2).toFixed(2) });
+      return { ok: true, booking: data };
+    }
+    const clash = demoBookings.some((b) =>
+      String(b.roomId) === String(room.id) &&
+      ["Requested", "Approved", "Confirmed"].includes(b.status) &&
+      overlaps(b.startsAt, b.endsAt, startsAt, endsAt));
+    if (clash) return { ok: false, error: "That time is no longer free." };
+    const booking = {
+      id: `bk-${Date.now()}`, roomId: room.id, guestId: "demo-guest",
+      startsAt, endsAt, status: STATUS.REQUESTED,
+      total: bookingTotal(room.price, startsAt, endsAt),
+      commissionRate: 0.2, denialReason: null, paymentDeadline: null, code: null,
+    };
+    setDemoBookings((list) => [booking, ...list]);
+    return { ok: true, booking };
+  }, [account, demoBookings, setDemoBookings]);
+
+  const patchDemo = useCallback((id, patch) => {
+    setDemoBookings((list) => list.map((b) => (b.id === id ? { ...b, ...patch } : b)));
+  }, [setDemoBookings]);
+
+  const approveBooking = useCallback(async (id) => {
+    if (live) {
+      const { error } = await db.approveBookingDb(id);
+      if (error) return { ok: false, error: error.message };
+      setBookings(await db.fetchBookings());
+      return { ok: true };
+    }
+    const b = demoBookings.find((x) => x.id === id);
+    if (!b || !canTransition(b.status, STATUS.APPROVED, ACTOR.HOST)) return { ok: false, error: "Not allowed." };
+    patchDemo(id, { status: STATUS.APPROVED, paymentDeadline: paymentDeadline(new Date(), b.startsAt).toISOString() });
+    return { ok: true };
+  }, [demoBookings, patchDemo]);
+
+  const denyBooking = useCallback(async (id, reason) => {
+    if (!String(reason || "").trim()) return { ok: false, error: "A reason is required." };
+    if (live) {
+      const { error } = await db.denyBookingDb(id, reason);
+      if (error) return { ok: false, error: error.message };
+      setBookings(await db.fetchBookings());
+      return { ok: true };
+    }
+    const b = demoBookings.find((x) => x.id === id);
+    if (!b || !canTransition(b.status, STATUS.DENIED, ACTOR.HOST)) return { ok: false, error: "Not allowed." };
+    patchDemo(id, { status: STATUS.DENIED, denialReason: reason.trim() });
+    return { ok: true };
+  }, [demoBookings, patchDemo]);
+
+  const cancelBooking = useCallback(async (id) => {
+    if (live) {
+      const { error } = await db.cancelBookingDb(id);
+      if (error) return { ok: false, error: error.message };
+      setBookings(await db.fetchBookings());
       setPayments(await db.fetchPayments());
       return { ok: true };
     }
-    takeSlot(room.id, date, slot);
-    setPayments((p) => [{ id: `pay-${Date.now()}`, roomId: room.id, label: "Deposit (50%)", amount: +(total / 2).toFixed(2), date, method: "CliQ", status: "Paid" }, ...p]);
+    const b = demoBookings.find((x) => x.id === id);
+    if (!b || !canTransition(b.status, STATUS.CANCELLED_BY_GUEST, ACTOR.GUEST)) return { ok: false, error: "Not allowed." };
+    const refund = b.status === STATUS.CONFIRMED ? refundAmount(b.total, b.startsAt, new Date()) : 0;
+    patchDemo(id, { status: STATUS.CANCELLED_BY_GUEST });
+    if (refund > 0) setPayments((p) => [{ id: `pay-${Date.now()}`, bookingId: id, roomId: b.roomId, kind: "refund", status: "pending", amount: refund, currency: "JOD", date: new Date().toISOString().slice(0, 10) }, ...p]);
     return { ok: true };
-  }, [account, takeSlot, setPayments]);
+  }, [demoBookings, patchDemo, setPayments]);
 
-  const updateBooking = useCallback(async (id, patch) => {
-    if (!live) return { ok: true };
-    const { data, error } = await db.updateBookingDb(id, patch);
-    if (!error && data) setBookings(await db.fetchBookings());
-    return { ok: !error, error: error?.message };
-  }, []);
+  const payForBooking = useCallback(async (id, card) => {
+    const b = allBookings.find((x) => x.id === id);
+    if (!b) return { ok: false, error: "Booking not found." };
+    const res = await rail.charge({ bookingId: id, amount: b.total, currency: "JOD", card });
+    if (!res.ok) return { ok: false, error: res.error };
+    if (live) {
+      const { error } = await db.confirmBookingPaymentDb(id, res.providerRef);
+      if (error) return { ok: false, error: error.message };
+      setBookings(await db.fetchBookings());
+      setPayments(await db.fetchPayments());
+      return { ok: true };
+    }
+    const code = String(Math.floor(1000 + Math.random() * 9000));
+    patchDemo(id, { status: STATUS.CONFIRMED, code });
+    setPayments((p) => [{ id: `pay-${Date.now()}`, bookingId: id, roomId: b.roomId, kind: "charge", status: "succeeded", amount: b.total, currency: "JOD", date: new Date().toISOString().slice(0, 10) }, ...p]);
+    return { ok: true };
+  }, [allBookings, patchDemo, setPayments]);
+
+  const validateArrivalCode = useCallback(async (id, code) => {
+    if (live) {
+      const { error } = await db.validateArrivalCodeDb(id, code);
+      if (error) return { ok: false, error: error.message };
+      setBookings(await db.fetchBookings());
+      return { ok: true };
+    }
+    const b = demoBookings.find((x) => x.id === id);
+    if (!b || b.status !== STATUS.CONFIRMED) return { ok: false, error: "Not allowed." };
+    if (b.code !== code) return { ok: false, error: "That code does not match." };
+    patchDemo(id, { status: STATUS.COMPLETED });
+    return { ok: true };
+  }, [demoBookings, patchDemo]);
+
+  const arrivalCodeFor = useCallback(async (id) => {
+    if (live) return db.fetchArrivalCode(id);
+    return demoBookings.find((x) => x.id === id)?.code || null;
+  }, [demoBookings]);
 
   // ----- messaging (live → DB insert + realtime; demo → local) -----
   const getThread = useCallback((roomId) => threads[roomId] || [], [threads]);
@@ -244,11 +334,6 @@ export function AppProvider({ children }) {
   }, [threads, account, setThreads]);
   const threadCount = Object.keys(threads).length;
 
-  // ----- payments -----
-  const addPayment = useCallback((entry) => {
-    setPayments((p) => [{ id: `pay-${Date.now()}`, ...entry }, ...p]);
-  }, [setPayments]);
-
   const resetBooking = useCallback(() => { setBooking(initialBooking); setMatchCode(null); }, []);
 
   const value = {
@@ -262,10 +347,11 @@ export function AppProvider({ children }) {
     myListings, addListing,
     favorites, isFavorite, toggleFavorite,
     reviews, getReviews, loadReviews, addReview,
-    takenFor, takeSlot,
-    bookings, submitBooking, updateBooking,
+    bookings: allBookings, bookedRanges,
+    requestBooking, approveBooking, denyBooking, cancelBooking,
+    payForBooking, validateArrivalCode, arrivalCodeFor,
     threads, getThread, sendMessage, threadCount,
-    payments, addPayment,
+    payments,
     resetBooking,
     toast, toastMsg, toastShown,
     modal, openModal, closeModal,
