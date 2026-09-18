@@ -152,10 +152,23 @@
      Two nested elements on purpose: .fan-card owns the fanned-out position (which the
      entry animation fills), .fan-inner owns the hover scale. If one element did both, the
      animation's fill-mode would overwrite the hover transform. */
-  .fan { position: relative; height: 300px; }
+  /* Mobile keeps the fan rather than degrading to a scroll row — most traffic is phones,
+     so the fan is sized by two variables and scaled down instead of replaced.
+     --fan-k multiplies the spread, --fan-size is the card edge. */
+  .fan {
+    --fan-k: 1;
+    --fan-size: 220px;
+    position: relative;
+    /* The cards are absolutely positioned, so the container needs an explicit height.
+       The headroom scales with --fan-k too, or the phone layout leaves ~60px of dead
+       space under the fan (the offsets shrink but a fixed pad does not). */
+    height: calc(var(--fan-size) + (60px * var(--fan-k)));
+  }
   .fan-card {
-    position: absolute; left: 50%; top: 0; width: 220px; height: 220px; margin-left: -110px;
-    transform: translate(var(--fx), var(--fy)) rotate(var(--fr));
+    position: absolute; left: 50%; top: 0;
+    width: var(--fan-size); height: var(--fan-size);
+    margin-left: calc(var(--fan-size) / -2);
+    transform: translate(calc(var(--fx) * var(--fan-k)), calc(var(--fy) * var(--fan-k))) rotate(var(--fr));
   }
   .fan-card:hover { z-index: 60; }
   .fan-inner {
@@ -169,18 +182,18 @@
     .fan-card { animation: fanOut .85s var(--ease) both; }
   }
 
-  /* The fan is ~860px wide at rest. Below that it becomes a snap-scrolling row instead of
-     overlapping itself. !important is needed to beat the animation's `both` fill-mode. */
+  /* Tablet: same five-card fan, scaled to fit. */
   @media (max-width: 900px) {
-    .fan {
-      height: auto; display: flex; gap: 12px; overflow-x: auto;
-      padding-bottom: 10px; scroll-snap-type: x mandatory;
-    }
-    .fan-card {
-      position: static; margin-left: 0; flex: 0 0 180px; height: 180px;
-      transform: none !important; animation: none; scroll-snap-align: start;
-    }
-    .fan-card:hover .fan-inner { transform: none; }
+    .fan { --fan-k: .68; --fan-size: 172px; }
+  }
+  /* Phone: five cards at this width shrink to postage stamps, so show the middle three
+     at a readable size instead. The outer two are the widest-offset cards, so dropping
+     them keeps the fan symmetrical.
+     Widest point at 375px: 160 x .58 + 66 = 159px each side = 318px, inside the 331px
+     the .wrap leaves after its 22px padding. */
+  @media (max-width: 560px) {
+    .fan { --fan-k: .58; --fan-size: 132px; }
+    .fan-card:first-child, .fan-card:last-child { display: none; }
   }
 
   /* ---- Surface tiers (see the token block for why) ---- */
@@ -311,7 +324,7 @@
 /* Cards start stacked at centre and fan out to their --fx/--fy/--fr resting position. */
 @keyframes fanOut {
   from { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(.9); }
-  to   { opacity: 1; transform: translate(var(--fx), var(--fy)) rotate(var(--fr)) scale(1); }
+  to   { opacity: 1; transform: translate(calc(var(--fx) * var(--fan-k)), calc(var(--fy) * var(--fan-k))) rotate(var(--fr)) scale(1); }
 }
 @keyframes biIn { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
 @keyframes flipIn { from { opacity: 0; transform: rotateX(-90deg) translateY(10px); } to { opacity: 1; transform: none; } }
