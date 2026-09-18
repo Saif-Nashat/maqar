@@ -4,7 +4,7 @@ import { SEED_REVIEWS, SEED_THREADS, SEED_PAYMENTS } from "../data/seed.js";
 import { ROOMS, mapRoomRow } from "../data/rooms.js";
 import { supabase, isSupabaseConfigured } from "../lib/supabase.js";
 import * as db from "../services/db.js";
-import { STATUS, ACTOR, canTransition, paymentDeadline, refundAmount, bookingTotal, overlaps } from "../lib/bookingMachine.js";
+import { STATUS, ACTOR, canTransition, paymentDeadline, refundAmount, bookingTotal, overlaps, COMMISSION_RATE, canRequestAt } from "../lib/bookingMachine.js";
 import * as rail from "../services/paymentRail.js";
 
 const live = isSupabaseConfigured;
@@ -222,6 +222,8 @@ export function AppProvider({ children }) {
       setBookings(await db.fetchBookings());
       return { ok: true, booking: data };
     }
+    if (!(new Date(endsAt) > new Date(startsAt))) return { ok: false, error: "invalidRange" };
+    if (!canRequestAt(startsAt, new Date())) return { ok: false, error: "tooSoon" };
     const clash = demoBookings.some((b) =>
       String(b.roomId) === String(room.id) &&
       ["Requested", "Approved", "Confirmed"].includes(b.status) &&
@@ -231,7 +233,7 @@ export function AppProvider({ children }) {
       id: `bk-${Date.now()}`, roomId: room.id, guestId: "demo-guest",
       startsAt, endsAt, status: STATUS.REQUESTED,
       total: bookingTotal(room.price, startsAt, endsAt),
-      commissionRate: 0.2, denialReason: null, paymentDeadline: null, code: null,
+      commissionRate: COMMISSION_RATE, denialReason: null, paymentDeadline: null, code: null,
     };
     setDemoBookings((list) => [booking, ...list]);
     return { ok: true, booking };
@@ -277,16 +279,26 @@ export function AppProvider({ children }) {
       return { ok: true };
     }
     const b = demoBookings.find((x) => x.id === id);
-    if (!b || !canTransition(b.status, STATUS.CANCELLED_BY_GUEST, ACTOR.GUEST)) return { ok: false, error: "Not allowed." };
-    const refund = b.status === STATUS.CONFIRMED ? refundAmount(b.total, b.startsAt, new Date()) : 0;
-    patchDemo(id, { status: STATUS.CANCELLED_BY_GUEST });
+    if (!b) return { ok: false, error: "Not allowed." };
+    const isHost = accountType === "host";
+    const actor = isHost ? ACTOR.HOST : ACTOR.GUEST;
+    const toStatus = isHost ? STATUS.CANCELLED_BY_HOST : STATUS.CANCELLED_BY_GUEST;
+    if (!canTransition(b.status, toStatus, actor)) return { ok: false, error: "Not allowed." };
+    // A host cancelling a confirmed booking always refunds in full; a guest gets the
+    // time-based fraction from bookingMachine's refund policy.
+    const refund = b.status === STATUS.CONFIRMED
+      ? (isHost ? b.total : refundAmount(b.total, b.startsAt, new Date()))
+      : 0;
+    patchDemo(id, { status: toStatus });
     if (refund > 0) setPayments((p) => [{ id: `pay-${Date.now()}`, bookingId: id, roomId: b.roomId, kind: "refund", status: "pending", amount: refund, currency: "JOD", date: new Date().toISOString().slice(0, 10) }, ...p]);
     return { ok: true };
-  }, [demoBookings, patchDemo, setPayments]);
+  }, [demoBookings, patchDemo, setPayments, accountType]);
 
   const payForBooking = useCallback(async (id, card) => {
     const b = allBookings.find((x) => x.id === id);
     if (!b) return { ok: false, error: "Booking not found." };
+    if (!canTransition(b.status, STATUS.CONFIRMED, ACTOR.SYSTEM)) return { ok: false, error: "notPayable" };
+    if (b.paymentDeadline && new Date(b.paymentDeadline) < new Date()) return { ok: false, error: "deadlinePassed" };
     const res = await rail.charge({ bookingId: id, amount: b.total, currency: "JOD", card });
     if (!res.ok) return { ok: false, error: res.error };
     if (live) {
