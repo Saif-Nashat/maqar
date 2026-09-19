@@ -215,6 +215,7 @@ const EN = {
   "rev.title": "Reviews", "rev.leave": "Leave a review", "rev.your": "Your rating",
   "rev.placeholder": "Share how it went…", "rev.submit": "Post review", "rev.thanks": "Thanks for your review!",
   "rev.none": "No reviews yet — be the first.",
+  "rev.needStay": "You can review this room after a completed booking.",
   // ---- availability ----
   "book.taken": "Booked", "book.conflict": "That slot was just taken — please pick another.",
   // ---- search ----
@@ -450,6 +451,7 @@ const AR = {
   "rev.title": "التقييمات", "rev.leave": "اكتب تقييمًا", "rev.your": "تقييمك",
   "rev.placeholder": "شاركنا كيف كانت التجربة…", "rev.submit": "نشر التقييم", "rev.thanks": "شكرًا لتقييمك!",
   "rev.none": "لا توجد تقييمات بعد — كن أول المقيّمين.",
+  "rev.needStay": "يمكنك تقييم هذه الغرفة بعد إتمام حجز فيها.",
   // ---- availability ----
   "book.taken": "محجوز", "book.conflict": "حُجز هذا الوقت للتو — يرجى اختيار وقت آخر.",
   // ---- search ----

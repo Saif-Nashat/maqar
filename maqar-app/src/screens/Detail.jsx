@@ -13,7 +13,7 @@ function Dot() {
 export default function Detail() {
   const { id } = useParams();
   const nav = useNavigate();
-  const { loggedIn, accountType, account, getRoom, setCurrentRoom, resetBooking, pendingAction, toast, isFavorite, toggleFavorite, getReviews, loadReviews, addReview } = useApp();
+  const { loggedIn, accountType, account, bookings, getRoom, setCurrentRoom, resetBooking, pendingAction, toast, isFavorite, toggleFavorite, getReviews, loadReviews, addReview } = useApp();
   const { t, lang } = useT();
   const room = getRoom(id);
   const [agree, setAgree] = useState(false);
@@ -97,7 +97,11 @@ export default function Detail() {
           <Policy title={t("detail.policyTitle")} items={[t("detail.policy1"), t("detail.policy2"), t("detail.policy3"), t("detail.policy4")]} />
           <Policy title={t("detail.hostPolicy", { host })} items={[t("detail.host1"), t("detail.host2"), t("detail.host3")]} />
 
-          <Reviews reviews={reviews} canPost={loggedIn} authorName={account?.name || (accountType === "host" ? t("msg.host") : t("msg.you"))}
+          <Reviews reviews={reviews} loggedIn={loggedIn}
+            canPost={loggedIn && accountType === "user" && bookings.some(
+              (b) => String(b.roomId) === String(room.id) && b.status === "Completed"
+            )}
+            authorName={account?.name || (accountType === "host" ? t("msg.host") : t("msg.you"))}
             onPost={(rating, text) => { addReview(room.id, { author: account?.name || t("msg.you"), rating, text, ts: new Date().toISOString().slice(0, 10) }); toast(t("rev.thanks")); }}
             onSignIn={() => nav("/login")} t={t} />
         </div>
@@ -169,7 +173,7 @@ function Gallery({ imgs = [], title, onOpen }) {
   );
 }
 
-function Reviews({ reviews, canPost, onPost, onSignIn, t }) {
+function Reviews({ reviews, canPost, loggedIn, onPost, onSignIn, t }) {
   const [rating, setRating] = useState(5);
   const [text, setText] = useState("");
   return (
@@ -190,6 +194,8 @@ function Reviews({ reviews, canPost, onPost, onSignIn, t }) {
           <button onClick={() => { if (text.trim()) { onPost(rating, text.trim()); setText(""); setRating(5); } }}
             className="btn-primary px-[20px] py-[10px] rounded-xl text-[14px]">{t("rev.submit")}</button>
         </div>
+      ) : loggedIn ? (
+        <p className="text-[14px] mb-4" style={{ color: "var(--muted)" }}>{t("rev.needStay")}</p>
       ) : (
         <button onClick={onSignIn} className="btn-soft px-[18px] py-[10px] rounded-xl text-[14px] mb-4">{t("rev.leave")}</button>
       )}

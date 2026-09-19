@@ -51,6 +51,13 @@ export async function fetchPayments() {
 // through an RPC — the client has no insert or update privilege on bookings.
 
 export async function fetchBookings() {
+  // Run the clock-driven transitions before reading, so a stalled scheduled
+  // job cannot leave a slot held by an unpaid booking forever. Both are
+  // idempotent and cheap.
+  await Promise.all([
+    supabase.rpc("expire_stale_approvals"),
+    supabase.rpc("mark_no_shows"),
+  ]);
   const { data } = await supabase
     .from("bookings")
     .select("*, rooms(*)")
