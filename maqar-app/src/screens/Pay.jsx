@@ -66,7 +66,7 @@ export default function Pay() {
     setBusy(true);
     const res = await payForBooking(booking.id, card);
     setBusy(false);
-    if (!res.ok) toast(t(`pay.err.${res.error}`) || res.error);
+    if (!res.ok) toast(t(`pay.err.${res.error}`));
   }
 
   const deadline = booking.paymentDeadline

@@ -26,11 +26,10 @@ export default function UserDash() {
   const codeKey = rows.filter((b) => b.status === STATUS.CONFIRMED).map((b) => b.id).join(",");
   useEffect(() => {
     let alive = true;
-    Promise.all(rows.filter((b) => b.status === STATUS.CONFIRMED)
-      .map(async (b) => [b.id, await arrivalCodeFor(b.id)]))
+    const ids = codeKey ? codeKey.split(",") : [];
+    Promise.all(ids.map(async (id) => [id, await arrivalCodeFor(id)]))
       .then((pairs) => { if (alive) setCodes(Object.fromEntries(pairs)); });
     return () => { alive = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [codeKey, arrivalCodeFor]);
 
   function bookAgain(room) { setCurrentRoom(room); resetBooking(); nav(`/book/${room.id}`); }
