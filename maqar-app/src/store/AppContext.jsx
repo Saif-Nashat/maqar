@@ -4,7 +4,7 @@ import { SEED_REVIEWS, SEED_THREADS, SEED_PAYMENTS } from "../data/seed.js";
 import { ROOMS, mapRoomRow } from "../data/rooms.js";
 import { supabase, isSupabaseConfigured } from "../lib/supabase.js";
 import * as db from "../services/db.js";
-import { STATUS, ACTOR, canTransition, paymentDeadline, refundAmount, bookingTotal, overlaps, COMMISSION_RATE, canRequestAt } from "../lib/bookingMachine.js";
+import { STATUS, ACTOR, canTransition, paymentDeadline, refundAmount, bookingTotal, overlaps, COMMISSION_RATE, canRequestAt, REFUND_POLICY } from "../lib/bookingMachine.js";
 import * as rail from "../services/paymentRail.js";
 
 const live = isSupabaseConfigured;
@@ -233,7 +233,8 @@ export function AppProvider({ children }) {
       id: `bk-${Date.now()}`, roomId: room.id, guestId: "demo-guest",
       startsAt, endsAt, status: STATUS.REQUESTED,
       total: bookingTotal(room.price, startsAt, endsAt),
-      commissionRate: COMMISSION_RATE, denialReason: null, paymentDeadline: null, code: null,
+      commissionRate: COMMISSION_RATE, refundPolicy: REFUND_POLICY,
+      denialReason: null, paymentDeadline: null, code: null,
     };
     setDemoBookings((list) => [booking, ...list]);
     return { ok: true, booking };
@@ -287,7 +288,7 @@ export function AppProvider({ children }) {
     // A host cancelling a confirmed booking always refunds in full; a guest gets the
     // time-based fraction from bookingMachine's refund policy.
     const refund = b.status === STATUS.CONFIRMED
-      ? (isHost ? b.total : refundAmount(b.total, b.startsAt, new Date()))
+      ? (isHost ? b.total : refundAmount(b.total, b.startsAt, new Date(), b.refundPolicy || REFUND_POLICY))
       : 0;
     patchDemo(id, { status: toStatus });
     if (refund > 0) setPayments((p) => [{ id: `pay-${Date.now()}`, bookingId: id, roomId: b.roomId, kind: "refund", status: "pending", amount: refund, currency: "JOD", date: new Date().toISOString().slice(0, 10) }, ...p]);
@@ -299,6 +300,21 @@ export function AppProvider({ children }) {
     if (!b) return { ok: false, error: "Booking not found." };
     if (!canTransition(b.status, STATUS.CONFIRMED, ACTOR.SYSTEM)) return { ok: false, error: "notPayable" };
     if (b.paymentDeadline && new Date(b.paymentDeadline) < new Date()) return { ok: false, error: "deadlinePassed" };
+
+    if (live) {
+      // `b` above can be stale — the host may have cancelled, or the lazy sweep may
+      // have expired the booking, in the gap between this screen loading and the
+      // guest clicking pay. Re-read the authoritative row right before charging and
+      // re-run both guards against it, so a charge is never captured against a
+      // booking the server would then refuse to confirm (a captured charge with no
+      // booking and no refund). Demo mode's local array is already current, so it
+      // needs no re-read.
+      const fresh = await db.fetchBooking(id);
+      if (!fresh) return { ok: false, error: "Booking not found." };
+      if (!canTransition(fresh.status, STATUS.CONFIRMED, ACTOR.SYSTEM)) return { ok: false, error: "notPayable" };
+      if (fresh.paymentDeadline && new Date(fresh.paymentDeadline) < new Date()) return { ok: false, error: "deadlinePassed" };
+    }
+
     const res = await rail.charge({ bookingId: id, amount: b.total, currency: "JOD", card });
     if (!res.ok) return { ok: false, error: res.error };
     if (live) {

@@ -121,7 +121,12 @@ export default function HostDash() {
                   <div className="text-[12px] font-semibold mt-[6px]" style={{ color: "var(--warn)" }}>{t("hd.awaitingPayment")}</div>
                 )}
                 <div className="text-[12px] font-semibold mt-[6px]" style={{ color: "var(--good)" }}>
-                  {t("hd.yourPayout", { amount: (b.total * (1 - COMMISSION_RATE)).toFixed(2) })}
+                  {t("hd.yourPayout", {
+                    amount: (b.hostPayoutAmount != null
+                      ? b.hostPayoutAmount
+                      : b.total * (1 - (b.commissionRate ?? COMMISSION_RATE))
+                    ).toFixed(2),
+                  })}
                 </div>
               </div>
               {b.status === STATUS.REQUESTED && (

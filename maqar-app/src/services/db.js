@@ -65,6 +65,18 @@ export async function fetchBookings() {
   return (data || []).map(mapBookingRow);
 }
 
+// A single fresh row, bypassing the cached client-side list. Used right before a
+// charge is captured, so a stale local copy (host cancelled, or the lazy sweep
+// expired it) can't let a payment through that the server would then refuse to confirm.
+export async function fetchBooking(id) {
+  const { data } = await supabase
+    .from("bookings")
+    .select("*, rooms(*)")
+    .eq("id", id)
+    .maybeSingle();
+  return data ? mapBookingRow(data) : null;
+}
+
 export function mapBookingRow(b) {
   return {
     id: b.id,

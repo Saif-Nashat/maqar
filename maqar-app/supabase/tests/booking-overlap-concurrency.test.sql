@@ -1,0 +1,148 @@
+-- ============================================================
+--  Concurrency test for the overlap exclusion constraint
+--  (bookings_no_overlap, an EXCLUDE USING gist constraint).
+--
+--  Design spec section 9 requires: "One concurrency test... two
+--  overlapping inserts issued together, exactly one must succeed."
+--
+--  booking-lifecycle.test.sql does NOT satisfy that requirement: it issues
+--  its inserts sequentially inside one transaction, on one connection. A
+--  single transaction can never exercise the index-level locking that
+--  actually protects against a race, because there is nothing to race
+--  against — only two truly concurrent transactions, each holding an open
+--  write, can show whether the constraint blocks and rejects a second
+--  writer instead of just rejecting whichever statement happens to run
+--  second in program order.
+--
+--  This file CANNOT be run as a single script. It must be run as TWO
+--  SEPARATE SESSIONS — two Supabase SQL editor tabs, or two `psql`
+--  connections to the same database — followed in the order below.
+--
+--  A note on why session A must COMMIT rather than roll back: Postgres can
+--  only reject session B's insert once session A's conflicting row is
+--  actually, permanently committed — that is the whole point of the test
+--  (a real conflict, not just two uncommitted intentions). If A rolled
+--  back instead, B's insert would simply succeed once A's lock released,
+--  proving nothing. So this procedure ends with ONE row genuinely
+--  committed (A's) and one genuinely rejected (B's, whose transaction is
+--  then rolled back because Postgres aborts a transaction after a
+--  constraint violation — that rollback is mandatory, not optional). The
+--  CLEANUP step at the bottom deletes A's committed row afterward, using
+--  obviously-fake ids, so nothing from this test lingers once you're done.
+--  If you only want to observe the BLOCKING behavior (step 2) without
+--  asserting the final exclusion error, see the zero-residue variant noted
+--  at the very end, which rolls back session A instead of committing it.
+--
+--  ------------------------------------------------------------
+--  STEP 1 — in SESSION A, run this block and leave the tab open
+--  (do not run its COMMIT/ROLLBACK yet):
+--  ------------------------------------------------------------
+--
+--    begin;
+--
+--    do $$
+--    declare
+--      v_host  uuid := '11111111-1111-1111-1111-111111111111';
+--      v_guest uuid := '22222222-2222-2222-2222-222222222222';
+--      v_room  uuid := '33333333-3333-3333-3333-333333333333';
+--      v_base  timestamptz := date_trunc('hour', now()) + interval '3 days';
+--    begin
+--      insert into auth.users (id, email, instance_id, raw_user_meta_data)
+--      values (v_host, 'concurrency-host@example.com', '00000000-0000-0000-0000-000000000000'::uuid,
+--              '{"type":"host","name":"Concurrency Host"}'::jsonb)
+--      on conflict (id) do nothing;
+--      insert into auth.users (id, email, instance_id, raw_user_meta_data)
+--      values (v_guest, 'concurrency-guest@example.com', '00000000-0000-0000-0000-000000000000'::uuid,
+--              '{"type":"user","name":"Concurrency Guest"}'::jsonb)
+--      on conflict (id) do nothing;
+--
+--      insert into public.rooms (id, host_id, title, loc, area, type, cap, price)
+--      values (v_room, v_host, 'Concurrency Room', 'Abdoun, Amman', 'Abdoun', 'Meeting', 4, 10)
+--      on conflict (id) do nothing;
+--
+--      -- The first of the two overlapping inserts. This session now holds
+--      -- an open, uncommitted write against this room's time range.
+--      insert into public.bookings (room_id, guest_id, starts_at, ends_at, status, total)
+--      values (v_room, v_guest, v_base, v_base + interval '2 hours', 'Requested', 20);
+--    end $$;
+--
+--  EXPECTED: the block completes with no error. The transaction is still
+--  open — do not commit or rollback it yet. This session is deliberately
+--  left holding the write while you move to session B.
+--
+--  ------------------------------------------------------------
+--  STEP 2 — in a SECOND, SEPARATE SESSION (session B), with session A's
+--  transaction still open, run:
+--  ------------------------------------------------------------
+--
+--    begin;
+--
+--    -- An overlapping insert against the SAME room and an intersecting
+--    -- time range (1 hour into A's 2-hour booking, so the ranges collide).
+--    insert into public.bookings (room_id, guest_id, starts_at, ends_at, status, total)
+--    values (
+--      '33333333-3333-3333-3333-333333333333',
+--      '22222222-2222-2222-2222-222222222222',
+--      (date_trunc('hour', now()) + interval '3 days') + interval '1 hour',
+--      (date_trunc('hour', now()) + interval '3 days') + interval '3 hours',
+--      'Requested', 20
+--    );
+--
+--  EXPECTED: this statement BLOCKS (hangs) instead of returning immediately.
+--  It is waiting on the gist index lock session A's uncommitted row holds
+--  over the overlapping range. This blocking is itself part of what the
+--  spec means by "concurrent" — a sequential test can never produce it,
+--  because there is no second writer left waiting.
+--
+--  ------------------------------------------------------------
+--  STEP 3 — back in SESSION A, commit:
+--  ------------------------------------------------------------
+--
+--    commit;
+--
+--  ------------------------------------------------------------
+--  STEP 4 — session B's blocked insert now resolves on its own.
+--  ------------------------------------------------------------
+--
+--  EXPECTED: session B's insert returns immediately after A's commit, and
+--  it FAILS with:
+--
+--    ERROR:  conflicting key value violates exclusion constraint "bookings_no_overlap"
+--    SQLSTATE: 23P01 (exclusion_violation)
+--
+--  This is "exactly one must succeed": A's insert committed, B's was
+--  rejected once A's commit made the conflict visible. If B's insert
+--  instead succeeds, or fails with anything other than exclusion_violation,
+--  the constraint has regressed and this test has failed.
+--
+--  ------------------------------------------------------------
+--  STEP 5 — in SESSION B, roll back (the insert already failed, but the
+--  transaction is now in an aborted state and must be closed):
+--  ------------------------------------------------------------
+--
+--    rollback;
+--
+--  ------------------------------------------------------------
+--  CLEANUP — nothing to do. Session A committed only inside its own
+--  transaction, but that transaction inserted rows using fixed, obviously
+--  fake ids (the 111.../222.../333... uuids and *@example.com emails)
+--  specifically so they are easy to recognize and remove by hand if this
+--  procedure is ever run against a database you want to keep clean:
+--  ------------------------------------------------------------
+--
+--    begin;
+--    delete from public.bookings where room_id = '33333333-3333-3333-3333-333333333333';
+--    delete from public.rooms where id = '33333333-3333-3333-3333-333333333333';
+--    delete from auth.users where id in (
+--      '11111111-1111-1111-1111-111111111111',
+--      '22222222-2222-2222-2222-222222222222'
+--    );
+--    commit;
+--
+--  If you instead want the whole test to leave nothing behind at all,
+--  replace session A's `commit;` in step 3 with `rollback;` — the
+--  overlap-rejection behavior in step 4 cannot be observed that way
+--  (there is nothing left for B to conflict with), but it is the way to
+--  run this procedure with zero cleanup when you only want to confirm the
+--  BLOCKING behavior in step 2, not the final exclusion error.
+-- ============================================================

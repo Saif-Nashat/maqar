@@ -83,10 +83,14 @@ create table if not exists public.bookings (
 
 -- booking_codes: the guest's 4-digit arrival code. The host must never read
 -- these directly — validate_arrival_code() checks it server-side.
+-- attempts/locked_until throttle a host scripting all 10,000 combinations:
+-- validate_arrival_code() locks the code for 15 minutes after 5 misses.
 create table if not exists public.booking_codes (
-  booking_id uuid primary key references public.bookings(id) on delete cascade,
-  code       text not null check (code ~ '^[0-9]{4}$'),
-  created_at timestamptz not null default now()
+  booking_id   uuid primary key references public.bookings(id) on delete cascade,
+  code         text not null check (code ~ '^[0-9]{4}$'),
+  attempts     int not null default 0,
+  locked_until timestamptz,
+  created_at   timestamptz not null default now()
 );
 
 create table if not exists public.reviews (
@@ -131,6 +135,18 @@ create table if not exists public.payments (
   created_at   timestamptz not null default now()
 );
 create index if not exists payments_booking_idx on public.payments (booking_id);
+
+-- platform_settings: a single operator-controlled row. Today it holds one
+-- switch, live_payments, read by confirm_booking_payment() as a kill switch
+-- (see the comment on that function) — changed only by an operator through
+-- the Supabase dashboard, never by the app.
+create table if not exists public.platform_settings (
+  id            int primary key default 1 check (id = 1),
+  live_payments boolean not null default false,
+  updated_at    timestamptz not null default now()
+);
+insert into public.platform_settings (id, live_payments) values (1, false)
+  on conflict (id) do nothing;
 
 -- ============================================================
 --  AUTO-CREATE PROFILE ON SIGN-UP
@@ -233,11 +249,26 @@ begin
   return v_booking;
 end $$;
 
+-- confirm_booking_payment: p_provider_ref is NOT verified against any payment
+-- provider — it is whatever string the caller passes over supabase.rpc(...).
+-- This is safe ONLY because the payment rail (src/services/paymentRail.js)
+-- is a client-side stub: no real money moves, so there is nothing to fake.
+-- Wiring a real PSP (CliQ, a card processor, etc.) requires REWRITING this
+-- function to verify the charge against a server-side source of truth — a
+-- webhook-recorded payment, or a charge this function itself initiates —
+-- before setting the booking to Confirmed. The live_payments check below
+-- does not perform that integration; it only makes this function refuse to
+-- run once live_payments is turned on, so a misconfiguration fails loudly
+-- instead of silently accepting a fabricated reference as proof of payment.
 create or replace function public.confirm_booking_payment(p_booking_id uuid, p_provider_ref text)
 returns public.bookings
 language plpgsql security definer set search_path = public as $$
 declare v_booking public.bookings; v_code text;
 begin
+  if (select live_payments from platform_settings where id = 1) then
+    raise exception 'Live payments are enabled but confirm_booking_payment still accepts an unverified client-supplied reference. Integrate a server-side payment verification (PSP webhook or server-initiated charge) before enabling live_payments.';
+  end if;
+
   select * into v_booking from bookings where id = p_booking_id and guest_id = auth.uid();
   if not found then raise exception 'Not your booking'; end if;
   if v_booking.status <> 'Approved' then
@@ -266,7 +297,7 @@ end $$;
 create or replace function public.validate_arrival_code(p_booking_id uuid, p_code text)
 returns public.bookings
 language plpgsql security definer set search_path = public as $$
-declare v_booking public.bookings; v_expected text;
+declare v_booking public.bookings; v_expected text; v_attempts int; v_locked_until timestamptz;
 begin
   select b.* into v_booking from bookings b
     join rooms r on r.id = b.room_id
@@ -276,10 +307,25 @@ begin
     raise exception 'Cannot check in a booking that is %', v_booking.status;
   end if;
 
-  select code into v_expected from booking_codes where booking_id = p_booking_id;
+  select code, attempts, locked_until into v_expected, v_attempts, v_locked_until
+    from booking_codes where booking_id = p_booking_id;
+
+  if v_locked_until is not null and v_locked_until > now() then
+    raise exception 'Too many incorrect attempts. Try again later.';
+  end if;
+
   if v_expected is null or v_expected <> p_code then
+    v_attempts := coalesce(v_attempts, 0) + 1;
+    if v_attempts >= 5 then
+      update booking_codes set attempts = 0, locked_until = now() + interval '15 minutes'
+       where booking_id = p_booking_id;
+    else
+      update booking_codes set attempts = v_attempts where booking_id = p_booking_id;
+    end if;
     raise exception 'That code does not match';
   end if;
+
+  update booking_codes set attempts = 0, locked_until = null where booking_id = p_booking_id;
 
   update bookings set status = 'Completed', completed_at = now()
    where id = p_booking_id returning * into v_booking;
@@ -365,6 +411,7 @@ alter table public.reviews      enable row level security;
 alter table public.messages     enable row level security;
 alter table public.favorites    enable row level security;
 alter table public.payments     enable row level security;
+alter table public.platform_settings enable row level security;
 
 -- The browser reads. It does not write bookings, booking_codes, or payments
 -- directly — every write to those three goes through a security-definer
@@ -463,6 +510,14 @@ create policy payments_read on public.payments for select using (
                     where b.id = booking_id)
   or public.is_admin()
 );
+
+-- platform_settings: readable by any signed-in user (it only exposes a
+-- boolean feature flag, nothing sensitive). No write grant or policy for
+-- authenticated/anon — an operator changes it via the dashboard, the app
+-- never does.
+grant select on public.platform_settings to authenticated;
+drop policy if exists platform_settings_read on public.platform_settings;
+create policy platform_settings_read on public.platform_settings for select using (true);
 
 -- ============================================================
 --  SEED ROOMS (stable ids so the frontend can match if needed)

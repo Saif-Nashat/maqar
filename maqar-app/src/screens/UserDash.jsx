@@ -5,7 +5,7 @@ import { roomText } from "../data/rooms.js";
 import { useApp } from "../store/AppContext.jsx";
 import { useT } from "../i18n/index.jsx";
 import { useRequireAccount } from "../lib/guards.jsx";
-import { STATUS, refundAmount } from "../lib/bookingMachine.js";
+import { STATUS, refundAmount, REFUND_POLICY } from "../lib/bookingMachine.js";
 
 export default function UserDash() {
   const nav = useNavigate();
@@ -35,7 +35,9 @@ export default function UserDash() {
   function bookAgain(room) { setCurrentRoom(room); resetBooking(); nav(`/book/${room.id}`); }
 
   function confirmCancel(b) {
-    const refund = b.status === STATUS.CONFIRMED ? refundAmount(b.total, b.startsAt, new Date()) : 0;
+    const refund = b.status === STATUS.CONFIRMED
+      ? refundAmount(b.total, b.startsAt, new Date(), b.refundPolicy || REFUND_POLICY)
+      : 0;
     openModal({
       title: t("ud.cancelTitle"),
       msg: `${t("ud.cancelMsg")}${b.status === STATUS.CONFIRMED ? " " + t("ud.refundNote", { amount: refund }) : ""}`,
