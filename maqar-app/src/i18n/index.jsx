@@ -364,7 +364,7 @@ const AR = {
   "hd.minutesAgo": "قبل دقيقتين", "hd.noOther": "لا توجد تنبيهات أخرى.",
   "hd.awaitingPayment": "بانتظار دفع الضيف",
   "hd.checkInTitle": "تسجيل وصول ضيف",
-  "hd.checkInSub": "اطلب من الضيف رمزه المكوّن من 4 أرقام وأدخله هنا.",
+  "hd.checkInSub": "اطلب من الضيف رمزه المكوّن من ٤ أرقام وأدخله هنا.",
   "hd.pickBooking": "أي حجز؟",
   "hd.checkedIn": "تم تسجيل الوصول.",
   "hd.noArrivals": "لا توجد حجوزات مؤكدة لتسجيل وصولها.",
