@@ -188,7 +188,7 @@ RLS read policies:
 |---|---|
 | `bookings` | Guest (own), host (for their rooms), admin |
 | `booking_codes` | Guest (own), admin. **Never the host** |
-| `payments` | Guest (own bookings), admin. Host sees payout amounts via the booking |
+| `payments` | Guest (own bookings), host (for their rooms' bookings), admin |
 | `profiles` | Yourself, a counterparty in a shared booking or message thread, admin |
 | `reviews` | Public read, unchanged |
 
