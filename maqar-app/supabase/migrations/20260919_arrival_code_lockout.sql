@@ -10,6 +10,17 @@
 --  Ownership and status checks are unchanged. Already folded into
 --  schema.sql; this file is here so a fresh project and an existing one
 --  converge on the same database.
+--
+--  FIX ROUND 1: the mismatch branch must NOT `raise exception` — a raised
+--  exception rolls back everything the function did in that transaction,
+--  including the UPDATE that just incremented `attempts` (and the one that
+--  would set `locked_until` on the 5th miss). The counter write and the
+--  error were both being undone by the same statement, so the lockout was
+--  a no-op: attempts could never reach 5. On a mismatch the function now
+--  returns NULL instead, which is a normal return (permitted by `returns
+--  public.bookings`), so the counter write commits. The client
+--  (src/services/db.js validateArrivalCodeDb) now treats a NULL return
+--  with no Postgres error as "wrong code" and surfaces it as an error.
 -- ============================================================
 
 alter table public.booking_codes
@@ -44,7 +55,12 @@ begin
     else
       update booking_codes set attempts = v_attempts where booking_id = p_booking_id;
     end if;
-    raise exception 'That code does not match';
+    -- Do NOT raise here: a raised exception rolls back this transaction,
+    -- including the attempts/locked_until update just above, which would
+    -- make the lockout a no-op. Return NULL instead so the counter write
+    -- commits; the client treats a NULL return with no Postgres error as
+    -- "wrong code" (see validateArrivalCodeDb in src/services/db.js).
+    return null;
   end if;
 
   update booking_codes set attempts = 0, locked_until = null where booking_id = p_booking_id;

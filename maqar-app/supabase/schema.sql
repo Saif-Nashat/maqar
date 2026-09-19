@@ -84,7 +84,10 @@ create table if not exists public.bookings (
 -- booking_codes: the guest's 4-digit arrival code. The host must never read
 -- these directly — validate_arrival_code() checks it server-side.
 -- attempts/locked_until throttle a host scripting all 10,000 combinations:
--- validate_arrival_code() locks the code for 15 minutes after 5 misses.
+-- validate_arrival_code() locks the code for 15 minutes after 5 misses. On a
+-- mismatch it returns NULL rather than raising, because a raised exception
+-- would roll back the very counter update meant to persist (see the
+-- function's body for the full explanation).
 create table if not exists public.booking_codes (
   booking_id   uuid primary key references public.bookings(id) on delete cascade,
   code         text not null check (code ~ '^[0-9]{4}$'),
@@ -322,7 +325,12 @@ begin
     else
       update booking_codes set attempts = v_attempts where booking_id = p_booking_id;
     end if;
-    raise exception 'That code does not match';
+    -- Do NOT raise here: a raised exception rolls back this transaction,
+    -- including the attempts/locked_until update just above, which would
+    -- make the lockout a no-op. Return NULL instead so the counter write
+    -- commits; the client treats a NULL return with no Postgres error as
+    -- "wrong code" (see validateArrivalCodeDb in src/services/db.js).
+    return null;
   end if;
 
   update booking_codes set attempts = 0, locked_until = null where booking_id = p_booking_id;

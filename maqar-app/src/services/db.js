@@ -133,6 +133,10 @@ export async function validateArrivalCodeDb(id, code) {
   const { data, error } = await supabase.rpc("validate_arrival_code", {
     p_booking_id: id, p_code: code,
   });
+  // The RPC returns NULL (not a Postgres error) on a code mismatch, so its counter
+  // write commits instead of being rolled back by a raised exception. Surface that
+  // as an error here so the caller can't mistake "no data" for success.
+  if (!error && !data) return { data: null, error: { message: "codeWrong" } };
   return { data: data ? mapBookingRow(data) : null, error };
 }
 
