@@ -40,6 +40,7 @@ export default function HostDash() {
   const [tab, setTab] = useState("requests");
   const [arrivalId, setArrivalId] = useState("");
   const [verifyVal, setVerifyVal] = useState("");
+  const [verifyError, setVerifyError] = useState("");
 
   const requests = bookings
     .map((b) => ({ ...b, room: b.room || getRoom(b.roomId) }))
@@ -64,9 +65,16 @@ export default function HostDash() {
   }
 
   async function checkIn() {
+    setVerifyError("");
     const res = await validateArrivalCode(arrivalId, verifyVal);
-    toast(res.ok ? t("hd.checkedIn") : t("hd.codeWrong"));
-    if (res.ok) { setVerifyVal(""); setArrivalId(""); }
+    if (!res.ok) {
+      setVerifyError(t("hd.codeWrong"));
+      toast(t("hd.codeWrong"));
+      return;
+    }
+    toast(t("hd.checkedIn"));
+    setVerifyVal("");
+    setArrivalId("");
   }
 
   if (blocked) return null;
@@ -150,7 +158,7 @@ export default function HostDash() {
             <h2 className="text-[18px] font-semibold mb-[6px]">{t("hd.checkInTitle")}</h2>
             <p className="text-[14px] mb-5" style={{ color: "var(--muted)" }}>{t("hd.checkInSub")}</p>
             <label className="block text-[13px] font-bold mb-[6px]" style={{ color: "var(--coffee)" }}>{t("hd.pickBooking")}</label>
-            <select value={arrivalId} onChange={(e) => setArrivalId(e.target.value)} className="field-input mb-4">
+            <select value={arrivalId} onChange={(e) => { setArrivalId(e.target.value); setVerifyError(""); }} className="field-input mb-4">
               <option value="">—</option>
               {arrivals.map((b) => (
                 <option key={b.id} value={b.id}>
@@ -162,6 +170,7 @@ export default function HostDash() {
             <input value={verifyVal} onChange={(e) => setVerifyVal(e.target.value.replace(/\D/g, ""))}
               maxLength={4} placeholder={t("hd.fourDigits")} dir="ltr"
               className="field-input text-center text-[22px] font-bold tracking-[8px] mb-4" />
+            {verifyError && <p className="text-[13px] font-semibold mb-3" style={{ color: "var(--bad)" }} role="alert">{verifyError}</p>}
             <button className="btn-primary w-full py-[13px] rounded-xl text-[15px]" onClick={checkIn}
               disabled={!arrivalId || verifyVal.length !== 4}>{t("hd.verifyArrival")}</button>
           </div>

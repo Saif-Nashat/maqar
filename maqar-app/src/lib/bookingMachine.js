@@ -92,6 +92,7 @@ export function canRequestAt(startsAt, now) {
 
 /** Half-open [start, end): a booking may begin exactly when another ends. */
 export function overlaps(aStart, aEnd, bStart, bEnd) {
+  if (ms(aStart) >= ms(aEnd) || ms(bStart) >= ms(bEnd)) return false;
   return ms(aStart) < ms(bEnd) && ms(bStart) < ms(aEnd);
 }
 

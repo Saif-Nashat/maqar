@@ -18,7 +18,7 @@ const ERR_KEYS = {
 export default function Booking() {
   const { id } = useParams();
   const nav = useNavigate();
-  const { booking, setBooking, toast, loggedIn, accountType, authReady, pendingAction,
+  const { booking, setBooking, toast, loggedIn, accountType, authReady, pendingAction: pendingActionRef,
           requestBooking, bookedRanges, getRoom } = useApp();
   const { t, lang } = useT();
   const room = getRoom(id);
@@ -32,7 +32,7 @@ export default function Booking() {
   useEffect(() => {
     if (!authReady) return;
     if (!loggedIn) {
-      pendingAction.current = () => nav(`/book/${id}`);
+      pendingActionRef.current = () => nav(`/book/${id}`);
       toast(t("guard.signInFirst"));
       nav("/login", { replace: true });
     } else if (accountType === "host") {

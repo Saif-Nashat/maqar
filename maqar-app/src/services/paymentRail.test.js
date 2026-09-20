@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { charge, PROVIDER } from "./paymentRail.js";
+import { charge, refund, PROVIDER } from "./paymentRail.js";
 
 const good = { number: "4242424242424242", exp: "12/30", cvc: "123", name: "S Ibrahim" };
 
@@ -24,10 +24,29 @@ describe("charge", () => {
     expect(res.error).toBe("network_error");
   });
 
+  it("accepts card numbers with spaces", async () => {
+    const res = await charge({ bookingId: "b1", amount: 18, currency: "JOD",
+                              card: { ...good, number: "4242 4242 4242 4242" } });
+    expect(res.ok).toBe(true);
+  });
+
+  it("rejects a missing or short card number", async () => {
+    const missing = await charge({ bookingId: "b1", amount: 18, currency: "JOD", card: {} });
+    const short = await charge({ bookingId: "b1", amount: 18, currency: "JOD",
+                                card: { ...good, number: "4242" } });
+    expect(missing).toEqual({ ok: false, error: "invalid_card" });
+    expect(short).toEqual({ ok: false, error: "invalid_card" });
+  });
+
   it("rejects a non-positive amount", async () => {
     const res = await charge({ bookingId: "b1", amount: 0, currency: "JOD", card: good });
     expect(res.ok).toBe(false);
     expect(res.error).toBe("invalid_amount");
+  });
+
+  it("rejects a non-positive refund", async () => {
+    const res = await refund({ paymentId: "p1", amount: 0 });
+    expect(res).toEqual({ ok: false, error: "invalid_amount" });
   });
 
   it("names itself so a real provider can replace it", () => {

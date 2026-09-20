@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 
 const SettingsContext = createContext(null);
+// eslint-disable-next-line react-refresh/only-export-components
 export const useSettings = () => useContext(SettingsContext);
 
 function readStored(key, fallback) {

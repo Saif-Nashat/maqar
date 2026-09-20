@@ -14,7 +14,7 @@ import ListingCard from "../components/ListingCard.jsx";
 import { useRequireAccount } from "../lib/guards.jsx";
 import { uploadRoomPhoto } from "../services/db.js";
 import { IMG, AREA_COORDS, AMMAN_CENTER } from "../data/rooms.js";
-import { TILES, TILE_ATTRIB } from "../lib/tiles.js";
+import { TILES, TILE_ATTRIB, FALLBACK_TILE_ATTRIB } from "../lib/tiles.js";
 
 const pinIcon = (price, cur) =>
   L.divIcon({ className: "maqar-pin-wrap", html: `<div class="maqar-pin">${price}<span>${cur}</span></div>`, iconSize: [54, 32], iconAnchor: [27, 34] });
@@ -229,13 +229,14 @@ function Recenter({ area }) {
   const map = useMap();
   useEffect(() => {
     const c = AREA_COORDS[area];
-    if (c) map.setView([c.lat, c.lng], 15, { animate: true });
+    if (c) map.setView([c.lat, c.lng], 15, { animate: false });
   }, [area, map]);
   return null;
 }
 
 function Locator({ draft, set, t, lang }) {
   const { theme } = useSettings();
+  const [fallbackTiles, setFallbackTiles] = useState(false);
   const cur = lang === "ar" ? "د.أ" : "JOD";
   const placed = draft.lat != null;
   const start = AREA_COORDS[draft.area] || AMMAN_CENTER;
@@ -247,7 +248,11 @@ function Locator({ draft, set, t, lang }) {
 
       <div className="relative rounded-r overflow-hidden h-[340px]" style={{ border: "1px solid var(--line)", isolation: "isolate" }}>
         <MapContainer center={[start.lat, start.lng]} zoom={14} scrollWheelZoom={false} style={{ height: "100%", width: "100%", cursor: "crosshair" }}>
-          <TileLayer key={theme} url={theme === "dark" ? TILES.dark : TILES.light} attribution={TILE_ATTRIB} />
+          <TileLayer
+            key={`${theme}-${fallbackTiles}`}
+            url={fallbackTiles ? TILES.fallback : (theme === "dark" ? TILES.dark : TILES.light)}
+            attribution={fallbackTiles ? FALLBACK_TILE_ATTRIB : TILE_ATTRIB}
+            eventHandlers={{ tileerror: () => setFallbackTiles(true) }} />
           <Recenter area={draft.area} />
           <ClickToPlace onPlace={(lat, lng) => set({ lat, lng })} />
           {placed && (

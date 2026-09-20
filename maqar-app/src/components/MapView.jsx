@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import { useNavigate } from "react-router-dom";
@@ -5,7 +6,7 @@ import { useApp } from "../store/AppContext.jsx";
 import { useSettings } from "../store/SettingsContext.jsx";
 import { useT } from "../i18n/index.jsx";
 import { roomText, AMMAN_CENTER } from "../data/rooms.js";
-import { TILES, TILE_ATTRIB } from "../lib/tiles.js";
+import { TILES, TILE_ATTRIB, FALLBACK_TILE_ATTRIB } from "../lib/tiles.js";
 
 
 // Escape before interpolating: room titles are user-supplied once hosts can list rooms,
@@ -55,6 +56,7 @@ export default function MapView({ rooms, activeId, onHoverPin, userLoc }) {
   const { setCurrentRoom } = useApp();
   const { theme } = useSettings();
   const { t, lang } = useT();
+  const [fallbackTiles, setFallbackTiles] = useState(false);
   const perHr = lang === "ar" ? "د.أ/ساعة" : "JOD/hr";
 
   function openDetail(room) {
@@ -67,7 +69,11 @@ export default function MapView({ rooms, activeId, onHoverPin, userLoc }) {
       style={{ border: "1px solid var(--line)", boxShadow: "var(--shadow),0 0 0 1px rgba(201,162,126,.18)", isolation: "isolate" }}>
       <MapContainer center={[AMMAN_CENTER.lat, AMMAN_CENTER.lng]} zoom={13} scrollWheelZoom={false}
         style={{ height: "100%", width: "100%" }}>
-        <TileLayer key={theme} url={theme === "dark" ? TILES.dark : TILES.light} attribution={TILE_ATTRIB} />
+        <TileLayer
+          key={`${theme}-${fallbackTiles}`}
+          url={fallbackTiles ? TILES.fallback : (theme === "dark" ? TILES.dark : TILES.light)}
+          attribution={fallbackTiles ? FALLBACK_TILE_ATTRIB : TILE_ATTRIB}
+          eventHandlers={{ tileerror: () => setFallbackTiles(true) }} />
         {userLoc && <Marker position={[userLoc.lat, userLoc.lng]} icon={userIcon} />}
         {rooms.map((r) => {
           const rt = roomText(r, lang);

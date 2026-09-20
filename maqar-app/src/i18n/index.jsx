@@ -486,6 +486,7 @@ const AR = {
   "pay.notPayable": "هذا الحجز ليس بانتظار الدفع.",
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 const DICTS = { en: EN, ar: AR };
 
 function interpolate(str, vars) {

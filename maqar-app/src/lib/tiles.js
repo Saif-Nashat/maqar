@@ -16,9 +16,13 @@ const KEY_Q = CARTO_KEY ? `?key=${CARTO_KEY}` : "";
 export const TILES = {
   light: `https://basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}{r}.png${KEY_Q}`,
   dark: `https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png${KEY_Q}`,
+  fallback: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
 };
 
 // CARTO and OpenStreetMap must stay credited on every map — it is a condition of the
 // free tier, not decoration.
 export const TILE_ATTRIB =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+
+export const FALLBACK_TILE_ATTRIB =
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';

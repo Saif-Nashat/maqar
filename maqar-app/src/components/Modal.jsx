@@ -1,13 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useApp } from "../store/AppContext.jsx";
 
 export default function Modal() {
   const { modal, closeModal } = useApp();
-  const [text, setText] = useState("");
-
-  useEffect(() => { setText(""); }, [modal]);
 
   if (!modal) return null;
+  const key = [modal.title, modal.msg, modal.cancelTxt, modal.okTxt, modal.variant, modal.textarea].join("|");
+  return <ModalContent key={key} modal={modal} closeModal={closeModal} />;
+}
+
+function ModalContent({ modal, closeModal }) {
+  const [text, setText] = useState("");
   const { title, msg, cancelTxt = "Cancel", okTxt = "Confirm", variant = "bad", textarea, onConfirm } = modal;
   const okColor = variant === "warn" ? "var(--warn)" : "var(--bad)";
 

@@ -13,7 +13,7 @@ function Dot() {
 export default function Detail() {
   const { id } = useParams();
   const nav = useNavigate();
-  const { loggedIn, accountType, account, bookings, getRoom, setCurrentRoom, resetBooking, pendingAction, toast, isFavorite, toggleFavorite, getReviews, loadReviews, addReview } = useApp();
+  const { loggedIn, accountType, account, bookings, getRoom, setCurrentRoom, resetBooking, pendingAction: pendingActionRef, toast, isFavorite, toggleFavorite, getReviews, loadReviews, addReview } = useApp();
   const { t, lang } = useT();
   const room = getRoom(id);
   const [agree, setAgree] = useState(false);
@@ -33,7 +33,7 @@ export default function Detail() {
     setCurrentRoom(room);
     resetBooking();
     if (!loggedIn) {
-      pendingAction.current = () => nav(`/book/${room.id}`);
+      pendingActionRef.current = () => nav(`/book/${room.id}`);
       nav("/login");
       return;
     }

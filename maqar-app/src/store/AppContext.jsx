@@ -10,7 +10,17 @@ import * as rail from "../services/paymentRail.js";
 const live = isSupabaseConfigured;
 
 const AppContext = createContext(null);
+// eslint-disable-next-line react-refresh/only-export-components
 export const useApp = () => useContext(AppContext);
+const DEMO_ACCOUNTS_KEY = "maqar-demo-accounts";
+
+function readDemoAccounts() {
+  try { return JSON.parse(localStorage.getItem(DEMO_ACCOUNTS_KEY) || "{}"); } catch { return {}; }
+}
+
+function writeDemoAccounts(accounts) {
+  try { localStorage.setItem(DEMO_ACCOUNTS_KEY, JSON.stringify(accounts)); } catch { /* ignore */ }
+}
 
 // `area` is the Amman district taken from a room's `loc` ("Abdoun, Amman" → "Abdoun").
 // "all" means no location filter. It is keyed off the English loc so the value stays
@@ -66,13 +76,17 @@ export function AppProvider({ children }) {
     if (data) setRooms(data.map(mapRoomRow));
     setRoomsLoading(false);
   }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadRooms(); }, [loadRooms]);
   const getRoom = useCallback((id) => rooms.find((r) => String(r.id) === String(id)), [rooms]);
 
   // ----- live data: load per-user slices on login + realtime chat -----
   useEffect(() => {
     if (!live || !account?.id) {
-      if (live && !account?.id) { setBookings([]); }
+      if (live && !account?.id) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setBookings([]);
+      }
       return;
     }
     let active = true;
@@ -130,15 +144,28 @@ export function AppProvider({ children }) {
 
   // ----- auth -----
   const signUp = useCallback(async ({ email, password, type, name }) => {
-    if (!isSupabaseConfigured) { setAccountState({ type, name: name || null }); return { ok: true }; }
+    if (!isSupabaseConfigured) {
+      const accounts = readDemoAccounts();
+      accounts[email] = { email, password, type, name: name || null };
+      writeDemoAccounts(accounts);
+      setAccountState({ email, type, name: name || null });
+      return { ok: true, type };
+    }
     const { error } = await supabase.auth.signUp({ email, password, options: { data: { type, name } } });
-    return { ok: !error, error: error?.message };
+    return { ok: !error, error: error?.message, type };
   }, []);
 
   const signIn = useCallback(async ({ email, password, type }) => {
-    if (!isSupabaseConfigured) { setAccountState({ type, name: null }); return { ok: true }; }
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { ok: !error, error: error?.message };
+    if (!isSupabaseConfigured) {
+      const saved = readDemoAccounts()[email];
+      if (!saved || saved.password !== password) return { ok: false, error: "Invalid email or password." };
+      setAccountState({ email, type: saved.type, name: saved.name || null });
+      return { ok: true, type: saved.type };
+    }
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { ok: false, error: error.message };
+    const { data: profile } = await supabase.from("profiles").select("type").eq("id", data.user.id).single();
+    return { ok: true, type: profile?.type || type };
   }, []);
 
   const signOut = useCallback(async () => {

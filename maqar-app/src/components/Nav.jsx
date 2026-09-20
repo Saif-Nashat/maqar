@@ -16,8 +16,8 @@ export default function Nav() {
     if (!loggedIn) { nav("/login"); return; }
     nav(accountType === "host" ? "/host" : "/me");
   }
-  function handleAuth() {
-    if (loggedIn) { signOut(); nav("/"); }
+  async function handleAuth() {
+    if (loggedIn) { await signOut(); nav("/"); }
     else nav("/login");
   }
 

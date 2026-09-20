@@ -11,7 +11,7 @@ import { combinedRating } from "../lib/ratings.js";
 // stays identical and there is no second card component to keep in sync.
 export default function RoomCard({ room, onHover, active, distanceKm, featured = false }) {
   const nav = useNavigate();
-  const { loggedIn, accountType, setCurrentRoom, resetBooking, pendingAction, toast, isFavorite, toggleFavorite, getReviews } = useApp();
+  const { loggedIn, accountType, setCurrentRoom, resetBooking, pendingAction: pendingActionRef, toast, isFavorite, toggleFavorite, getReviews } = useApp();
   const { t, lang } = useT();
   const rt = roomText(room, lang);
   const fav = isFavorite(room.id);
@@ -34,7 +34,7 @@ export default function RoomCard({ room, onHover, active, distanceKm, featured =
     setCurrentRoom(room);
     resetBooking();
     if (!loggedIn) {
-      pendingAction.current = () => nav(`/book/${room.id}`);
+      pendingActionRef.current = () => nav(`/book/${room.id}`);
       nav("/login");
       return;
     }

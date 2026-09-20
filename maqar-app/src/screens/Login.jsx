@@ -71,9 +71,10 @@ export default function Login() {
     if (!res.ok) { setErr(res.error || t("auth.signinFailed")); return; }
     rememberEmail(addr);
     if (isSignup) toast(t("login.welcomeToast"));
+    const destinationType = res.type || acctType;
     const action = consumePendingAction();
-    if (acctType === "user" && action) action();
-    else nav(acctType === "host" ? "/host" : "/me");
+    if (destinationType === "user" && action) action();
+    else nav(destinationType === "host" ? "/host" : "/me");
   }
 
   function submitCreate() {

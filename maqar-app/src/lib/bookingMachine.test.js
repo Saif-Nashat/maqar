@@ -34,6 +34,11 @@ describe("canTransition", () => {
     expect(canTransition(STATUS.DENIED, STATUS.APPROVED, ACTOR.HOST)).toBe(false);
   });
 
+  it("rejects unknown states and actors", () => {
+    expect(canTransition("Unknown", STATUS.APPROVED, ACTOR.HOST)).toBe(false);
+    expect(canTransition(STATUS.REQUESTED, STATUS.APPROVED, "unknown")).toBe(false);
+  });
+
   it("lets a guest cancel at every pre-terminal stage", () => {
     expect(canTransition(STATUS.REQUESTED, STATUS.CANCELLED_BY_GUEST, ACTOR.GUEST)).toBe(true);
     expect(canTransition(STATUS.APPROVED, STATUS.CANCELLED_BY_GUEST, ACTOR.GUEST)).toBe(true);
@@ -143,6 +148,10 @@ describe("overlaps", () => {
 
   it("allows a booking entirely before", () => {
     expect(overlaps(...a, at("2026-10-01T07:00:00Z"), at("2026-10-01T09:00:00Z"))).toBe(false);
+  });
+
+  it("does not treat a zero-length interval as overlapping", () => {
+    expect(overlaps(...a, at("2026-10-01T10:00:00Z"), at("2026-10-01T10:00:00Z"))).toBe(false);
   });
 });
 
